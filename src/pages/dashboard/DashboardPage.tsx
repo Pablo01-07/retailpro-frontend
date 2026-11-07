@@ -287,7 +287,7 @@ export const DashboardPage: React.FC = () => {
               </div>
               <div className="text-xs text-gray-500 font-medium mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
                 <span>{dashboardData?.categorias.length || 0} categorías activas</span>
-                <span className="text-gray-400 font-mono text-[11px]">
+                <span className="text-gray-400 tabular-nums text-[11px]">
                   Tend: {formatTendencia(kpiTotalSkusItem?.tendencia_pct)}
                 </span>
               </div>
@@ -494,8 +494,8 @@ export const DashboardPage: React.FC = () => {
                         style={{ backgroundColor: item.color }}
                       />
                       <span className="text-gray-800 font-medium whitespace-nowrap">{item.name}</span>
-                      <span className="font-bold text-gray-900 ml-auto pl-3">{item.pct}%</span>
-                      <span className="text-gray-500 text-[11px] font-mono">({formatNumber(item.value)} u)</span>
+                      <span className="font-bold text-gray-900 ml-auto pl-3 tabular-nums">{item.pct}%</span>
+                      <span className="text-gray-500 text-[11px] tabular-nums">({formatNumber(item.value)} u)</span>
                     </div>
                   ))}
                 </div>
@@ -552,10 +552,10 @@ export const DashboardPage: React.FC = () => {
                             {p.nombre}
                           </td>
                           <td className="py-3.5 px-5 text-gray-500">{p.categoria}</td>
-                          <td className="py-3.5 px-5 text-right font-bold text-gray-900">
+                          <td className="py-3.5 px-5 text-right font-bold tabular-nums text-gray-900">
                             {formatNumber(p.unidades_vendidas)} u
                           </td>
-                          <td className="py-3.5 px-5 text-right">
+                          <td className="py-3.5 px-5 text-right tabular-nums">
                             {hasVar ? (
                               <span
                                 className={
@@ -614,8 +614,8 @@ export const DashboardPage: React.FC = () => {
                           <td className="py-3.5 px-5 font-semibold text-gray-900 truncate max-w-[170px]" title={p.nombre}>
                             {p.nombre}
                           </td>
-                          <td className="py-3.5 px-5 font-mono text-gray-500">{p.sku}</td>
-                          <td className="py-3.5 px-5 text-right font-bold text-gray-900">
+                          <td className="py-3.5 px-5 text-gray-500">{p.sku}</td>
+                          <td className="py-3.5 px-5 text-right font-bold tabular-nums text-gray-900">
                             {p.stock_actual} u
                           </td>
                           <td className="py-3.5 px-5 text-center">

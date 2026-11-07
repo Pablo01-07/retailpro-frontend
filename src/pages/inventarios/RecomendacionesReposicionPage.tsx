@@ -51,6 +51,17 @@ export const RecomendacionesReposicionPage: React.FC = () => {
     staleTime: 15000,
   });
 
+  const items = reposicionData?.items || [];
+  const displayedCount = items.length;
+  const totalEvaluados = reposicionData?.total_recomendaciones ?? displayedCount;
+  const requierenCompraCount = items.filter((item) => {
+    const cant =
+      item.cantidad_ajustada !== null && item.cantidad_ajustada !== undefined
+        ? item.cantidad_ajustada
+        : item.cantidad_sugerida;
+    return cant > 0;
+  }).length;
+
   const categoriasDisponibles = useMemo(() => {
     return [
       'Todas',
@@ -276,7 +287,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
               Sugerencias de compra para reposición
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Mostrando {reposicionData?.items.length ?? 0} de {reposicionData?.total_recomendaciones ?? reposicionData?.items.length ?? 0} SKUs que requieren abastecimiento
+              Mostrando {displayedCount} de {totalEvaluados} SKUs evaluados · {requierenCompraCount} requieren compra
             </p>
           </div>
         </div>
@@ -290,7 +301,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
           <div className="p-8 text-center text-rose-600 text-sm">
             Error al consultar las sugerencias de reposición.
           </div>
-        ) : reposicionData?.items.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="p-16 text-center text-gray-400 text-sm">
             No se encontraron recomendaciones para los filtros seleccionados.
           </div>
@@ -311,7 +322,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-xs text-gray-700 font-medium">
-                {reposicionData?.items.map((item) => {
+                {items.map((item) => {
                   const hasAdjustment =
                     item.cantidad_ajustada !== null &&
                     item.cantidad_ajustada !== undefined &&
@@ -322,15 +333,15 @@ export const RecomendacionesReposicionPage: React.FC = () => {
                       <td className="py-3.5 px-5 font-semibold text-gray-900 max-w-[200px] truncate">
                         {item.nombre_producto}
                       </td>
-                      <td className="py-3.5 px-5 font-mono text-gray-500">{item.sku}</td>
+                      <td className="py-3.5 px-5 text-gray-500">{item.sku}</td>
                       <td className="py-3.5 px-5 text-gray-500">{item.categoria}</td>
-                      <td className="py-3.5 px-5 text-right font-bold text-gray-900">
+                      <td className="py-3.5 px-5 text-right font-bold tabular-nums text-gray-900">
                         {item.stock_actual} u
                       </td>
-                      <td className="py-3.5 px-5 text-right text-gray-600">
+                      <td className="py-3.5 px-5 text-right tabular-nums text-gray-600">
                         {Math.round(item.demanda_proyectada_14d)} u
                       </td>
-                      <td className="py-3.5 px-5 text-right font-bold">
+                      <td className="py-3.5 px-5 text-right font-bold tabular-nums">
                         {hasAdjustment ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <span className="text-emerald-700">+{item.cantidad_ajustada} u</span>
@@ -344,7 +355,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-5 text-center text-gray-600">
+                      <td className="py-3.5 px-5 text-center tabular-nums text-gray-600">
                         {formatDateOnly(item.fecha_limite)}
                       </td>
                       <td className="py-3.5 px-5 text-center">
@@ -387,7 +398,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">{selectedItem.nombre_producto}</h3>
-                <span className="text-xs font-mono text-gray-500">{selectedItem.sku} • {selectedItem.categoria}</span>
+                <span className="text-xs text-gray-500">{selectedItem.sku} • {selectedItem.categoria}</span>
               </div>
               <button
                 onClick={() => setSelectedItem(null)}
@@ -400,21 +411,21 @@ export const RecomendacionesReposicionPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <span className="text-gray-500">Stock actual</span>
-                <div className="text-base font-bold text-gray-900 mt-1">{selectedItem.stock_actual} u</div>
+                <div className="text-base font-bold tabular-nums text-gray-900 mt-1">{selectedItem.stock_actual} u</div>
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <span className="text-gray-500">Punto de reorden</span>
-                <div className="text-base font-bold text-gray-900 mt-1">{selectedItem.punto_reorden} u</div>
+                <div className="text-base font-bold tabular-nums text-gray-900 mt-1">{selectedItem.punto_reorden} u</div>
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <span className="text-gray-500">Demanda proyectada 14d</span>
-                <div className="text-base font-bold text-gray-900 mt-1">
+                <div className="text-base font-bold tabular-nums text-gray-900 mt-1">
                   {Math.round(selectedItem.demanda_proyectada_14d)} u
                 </div>
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <span className="text-gray-500">Días de cobertura</span>
-                <div className="text-base font-bold text-gray-900 mt-1">{selectedItem.dias_cobertura} días</div>
+                <div className="text-base font-bold tabular-nums text-gray-900 mt-1">{selectedItem.dias_cobertura} días</div>
               </div>
             </div>
 

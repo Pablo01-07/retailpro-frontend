@@ -280,15 +280,15 @@ export const ExportacionPronosticoPage: React.FC = () => {
                           <div className="font-semibold text-gray-900 truncate max-w-[200px]">
                             {it.nombre_producto}
                           </div>
-                          <div className="text-[11px] font-mono text-gray-400">{it.sku}</div>
+                          <div className="text-[11px] text-gray-400">{it.sku}</div>
                         </td>
-                        <td className="py-3 px-5 text-right font-bold text-gray-900">
+                        <td className="py-3 px-5 text-right font-bold tabular-nums text-gray-900">
                           {formatNumber(it.demanda_proyectada_14d)} unidades
                         </td>
-                        <td className="py-3 px-5 text-right text-gray-600">
+                        <td className="py-3 px-5 text-right tabular-nums text-gray-600">
                           {formatNumber(it.stock_actual)} u.
                         </td>
-                        <td className="py-3 px-5 text-right font-bold text-emerald-600">
+                        <td className="py-3 px-5 text-right font-bold tabular-nums text-emerald-600">
                           +{formatNumber(it.cantidad_sugerida)} u.
                         </td>
                         <td className="py-3 px-5 text-center">

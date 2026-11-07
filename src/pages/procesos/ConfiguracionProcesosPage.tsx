@@ -550,7 +550,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                         </td>
 
                         <td className="py-4 px-4">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-800 rounded-md text-xs font-mono">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-800 rounded-md text-xs tabular-nums font-medium">
                             <Clock size={13} className="text-gray-400" />
                             {p.hora || '00:00'}
                           </span>
@@ -843,7 +843,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                     type="time"
                     value={modalHora}
                     onChange={(e) => setModalHora(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-700/40"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm tabular-nums text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-700/40"
                   />
                 </div>
               </div>
@@ -852,7 +852,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                 <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block">
                   Próxima ejecución (Scheduler)
                 </span>
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-800 tabular-nums">
                   <Calendar size={16} className="text-brand-700 shrink-0" />
                   <span>
                     {modalProceso.proxima_ejecucion

@@ -204,7 +204,7 @@ export const ResultadoCargaPage: React.FC = () => {
               <tbody className="divide-y divide-gray-100">
                 {listaIncidencias.map((inc, index) => (
                   <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3.5 px-6 text-gray-700 font-mono text-xs">{inc.fila}</td>
+                    <td className="py-3.5 px-6 text-gray-700 tabular-nums text-xs">{inc.fila}</td>
                     <td className="py-3.5 px-6 text-gray-900 font-medium">{inc.columna}</td>
                     <td className="py-3.5 px-6 text-red-600 font-medium">{inc.tipo_error}</td>
                     <td className="py-3.5 px-6 text-gray-600 leading-relaxed">{inc.motivo}</td>

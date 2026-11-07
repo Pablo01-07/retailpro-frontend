@@ -305,16 +305,16 @@ export const HistorialVersionesPage: React.FC = () => {
                               {isActiva ? 'Activa' : isDescartada ? 'Descartada' : 'Anterior'}
                             </span>
                           </td>
-                          <td className="py-4 px-4 font-bold text-gray-900">
+                          <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
                             {v.mape !== null && v.mape !== undefined ? formatPct(v.mape, 2) : '—'}
                           </td>
-                          <td className="py-4 px-4 font-bold text-gray-900">
+                          <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
                             {v.wape !== null && v.wape !== undefined ? formatPct(v.wape, 2) : '—'}
                           </td>
-                          <td className="py-4 px-4 text-gray-600">
+                          <td className="py-4 px-4 text-gray-600 tabular-nums">
                             {v.mae !== null && v.mae !== undefined ? v.mae.toFixed(2) : '—'}
                           </td>
-                          <td className="py-4 px-4 text-gray-600">
+                          <td className="py-4 px-4 text-gray-600 tabular-nums">
                             {v.rmse !== null && v.rmse !== undefined ? v.rmse.toFixed(2) : '—'}
                           </td>
                           <td className="py-4 px-4 text-right">
@@ -416,7 +416,7 @@ export const HistorialVersionesPage: React.FC = () => {
                       <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
                         <span>{factor.label}</span>
                         <span
-                          className={`font-mono text-xs font-bold ${
+                          className={`tabular-nums text-xs font-bold ${
                             isPositive ? 'text-blue-600' : 'text-rose-600'
                           }`}
                         >

@@ -100,7 +100,7 @@ export const DetalleEjecucionPage: React.FC = () => {
             <h2 className="text-lg font-bold text-gray-900">
               {getTipoTitulo(detalle.tipo_proceso)}
             </h2>
-            <p className="text-xs text-gray-500 font-mono mt-0.5">
+            <p className="text-xs text-gray-500 tabular-nums mt-0.5">
               ID de ejecución: EJC-2026-{detalle.id_carga.toString().padStart(4, '0')}
             </p>
           </div>
@@ -111,35 +111,35 @@ export const DetalleEjecucionPage: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div>
             <span className="block text-xs text-gray-500 font-medium mb-1">Inicio</span>
-            <span className="text-sm font-bold text-gray-900">
+            <span className="text-sm font-bold text-gray-900 tabular-nums">
               {formatDateTimeLima(detalle.fecha_ejecucion)}
             </span>
           </div>
 
           <div>
             <span className="block text-xs text-gray-500 font-medium mb-1">Duración</span>
-            <span className="text-sm font-bold text-gray-900">
+            <span className="text-sm font-bold text-gray-900 tabular-nums">
               {formatDurationSeconds(detalle.duracion_total_segundos)}
             </span>
           </div>
 
           <div>
             <span className="block text-xs text-gray-500 font-medium mb-1">Registros procesados</span>
-            <span className="text-sm font-bold text-gray-900">
+            <span className="text-sm font-bold text-gray-900 tabular-nums">
               {formatNumber(detalle.registros_procesados)}
             </span>
           </div>
 
           <div>
             <span className="block text-xs text-gray-500 font-medium mb-1">Registros exitosos</span>
-            <span className="text-sm font-bold text-emerald-600">
+            <span className="text-sm font-bold text-emerald-600 tabular-nums">
               {formatNumber(exitosos)}
             </span>
           </div>
 
           <div>
             <span className="block text-xs text-gray-500 font-medium mb-1">Con errores</span>
-            <span className="text-sm font-bold text-red-600">
+            <span className="text-sm font-bold text-red-600 tabular-nums">
               {formatNumber(detalle.registros_rechazados)}
             </span>
           </div>
@@ -168,13 +168,13 @@ export const DetalleEjecucionPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 <tr className="hover:bg-gray-50/50">
-                  <td className="py-3.5 px-6 font-mono text-xs font-semibold text-gray-700">
+                  <td className="py-3.5 px-6 text-xs font-semibold text-gray-700 tabular-nums">
                     ERR-{detalle.id_carga.toString().padStart(4, '0')}
                   </td>
                   <td className="py-3.5 px-6 text-gray-800 leading-relaxed">
                     {detalle.detalle_error || 'Registros no superaron la validación sintáctica requerida'}
                   </td>
-                  <td className="py-3.5 px-6 text-gray-600">
+                  <td className="py-3.5 px-6 text-gray-600 tabular-nums">
                     {detalle.registros_rechazados} registros
                   </td>
                   <td className="py-3.5 px-6 text-right">

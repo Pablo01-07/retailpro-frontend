@@ -373,7 +373,7 @@ export const CentroReportesPage: React.FC = () => {
                           {tipo}
                         </span>
                       </td>
-                      <td className="py-3.5 px-5 text-center text-gray-500">
+                      <td className="py-3.5 px-5 text-center text-gray-500 tabular-nums">
                         {formatDateTimeLima(fecha)}
                       </td>
                       <td className="py-3.5 px-5 text-center">
@@ -391,7 +391,7 @@ export const CentroReportesPage: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-5 text-right font-mono text-gray-600">
+                      <td className="py-3.5 px-5 text-right tabular-nums text-gray-600">
                         {formatBytes(item.tamano_bytes || 0)}
                       </td>
                       <td className="py-3.5 px-5 text-right">

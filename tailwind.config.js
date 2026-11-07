@@ -24,6 +24,7 @@ export default {
       },
       fontFamily: {
         sans: ['Calibri', 'Carlito', 'Segoe UI', 'Arial', 'sans-serif'],
+        mono: ['Calibri', 'Carlito', 'Segoe UI', 'Arial', 'sans-serif'],
       },
     },
   },

@@ -117,12 +117,12 @@ export class ErrorBoundary extends Component<Props, State> {
               </button>
 
               {this.state.showDetails && (
-                <div className="mt-3 p-4 bg-gray-900 rounded-xl text-xs font-mono text-rose-300 overflow-x-auto space-y-2 max-h-64">
+                <div className="mt-3 p-4 bg-gray-900 rounded-xl text-xs tabular-nums text-rose-300 overflow-x-auto space-y-2 max-h-64">
                   <p className="font-bold text-rose-400">
                     {this.state.error?.name}: {this.state.error?.message}
                   </p>
                   {this.state.errorInfo?.componentStack && (
-                    <pre className="text-[11px] text-gray-400 whitespace-pre-wrap leading-tight">
+                    <pre className="text-[11px] font-sans text-gray-400 whitespace-pre-wrap leading-tight">
                       {this.state.errorInfo.componentStack}
                     </pre>
                   )}

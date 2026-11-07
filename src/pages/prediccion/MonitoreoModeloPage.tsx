@@ -411,8 +411,13 @@ export const MonitoreoModeloPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
-        <div className="p-5 border-b border-gray-200/80">
-          <h2 className="text-base font-bold text-gray-900">Historial de evaluaciones recientes</h2>
+        <div className="p-5 border-b border-gray-200/80 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Historial de evaluaciones recientes</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Mostrando {monitoreo.serie_mensual?.length ?? 0} de {monitoreo.serie_mensual?.length ?? 0} evaluaciones mensuales
+            </p>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -447,13 +452,13 @@ export const MonitoreoModeloPage: React.FC = () => {
                         <td className="py-4 px-6 font-medium text-gray-800">
                           {item.periodo} ({item.corte})
                         </td>
-                        <td className="py-4 px-6 font-bold text-gray-900">
+                        <td className="py-4 px-6 font-bold tabular-nums text-gray-900">
                           {item.mape !== null && item.mape !== undefined ? formatPct(item.mape, 2) : '—'}
                         </td>
-                        <td className="py-4 px-6 text-gray-600">
+                        <td className="py-4 px-6 text-gray-600 tabular-nums">
                           {item.mae !== null && item.mae !== undefined ? `${item.mae.toFixed(2)} unidades` : '—'}
                         </td>
-                        <td className="py-4 px-6 text-gray-600">
+                        <td className="py-4 px-6 text-gray-600 tabular-nums">
                           {item.rmse !== null && item.rmse !== undefined ? `${item.rmse.toFixed(2)} unidades` : '—'}
                         </td>
                         <td className="py-4 px-6 text-right">

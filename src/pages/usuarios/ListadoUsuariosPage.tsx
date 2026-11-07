@@ -200,7 +200,7 @@ export const ListadoUsuariosPage: React.FC = () => {
                       <td className="py-3.5 px-5 font-semibold text-gray-900">
                         {u.nombre_completo}
                       </td>
-                      <td className="py-3.5 px-5 text-gray-600 font-mono">
+                      <td className="py-3.5 px-5 text-gray-600">
                         {u.correo}
                       </td>
                       <td className="py-3.5 px-5 text-center">
@@ -231,7 +231,7 @@ export const ListadoUsuariosPage: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-5 text-center text-gray-500">
+                      <td className="py-3.5 px-5 text-center text-gray-500 tabular-nums">
                         {formatDateLima(u.fecha_creacion || u.creado_en)}
                       </td>
                       <td className="py-3.5 px-5 text-right">

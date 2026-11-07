@@ -629,7 +629,7 @@ export const AuditoriaSistemaPage: React.FC = () => {
                             : 'hover:bg-gray-50/70'
                         }`}
                       >
-                        <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
+                        <td className="py-3 px-4 text-gray-600 tabular-nums whitespace-nowrap">
                           {formatDateTimeLima(log.fecha_hora)}
                         </td>
                         <td className="py-3 px-4 text-gray-900 font-semibold whitespace-nowrap">
@@ -790,7 +790,7 @@ export const AuditoriaSistemaPage: React.FC = () => {
                     <span className="block font-semibold text-gray-500 text-[11px] uppercase tracking-wider">
                       Dirección IP
                     </span>
-                    <span className="block text-gray-700 font-mono text-xs mt-1 bg-white px-2.5 py-1 border border-gray-200 rounded-lg inline-block">
+                    <span className="block text-gray-700 tabular-nums text-xs mt-1 bg-white px-2.5 py-1 border border-gray-200 rounded-lg inline-block">
                       {getIpAddress(selectedLog)}
                     </span>
                   </div>
@@ -829,7 +829,7 @@ export const AuditoriaSistemaPage: React.FC = () => {
                           )}
                         </button>
                       </div>
-                      <pre className="p-3 bg-slate-900 text-emerald-300 rounded-xl text-xs font-mono leading-relaxed overflow-x-auto max-h-56 border border-slate-800 shadow-inner">
+                      <pre className="p-3 bg-slate-900 text-emerald-300 rounded-xl text-xs tabular-nums leading-relaxed overflow-x-auto max-h-56 border border-slate-800 shadow-inner">
                         {formattedMetadata}
                       </pre>
                     </div>

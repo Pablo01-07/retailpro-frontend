@@ -292,8 +292,8 @@ export const CentroAlertasPage: React.FC = () => {
                       <td className="py-3.5 px-5 font-semibold text-gray-900 max-w-[190px] truncate">
                         {item.nombre_producto}
                       </td>
-                      <td className="py-3.5 px-5 font-mono text-gray-500">{item.sku}</td>
-                      <td className="py-3.5 px-5 text-right font-bold text-gray-900">
+                      <td className="py-3.5 px-5 text-gray-500">{item.sku}</td>
+                      <td className="py-3.5 px-5 text-right font-bold tabular-nums text-gray-900">
                         {item.stock_actual} u
                       </td>
                       <td className="py-3.5 px-5 text-center">
@@ -370,7 +370,7 @@ export const CentroAlertasPage: React.FC = () => {
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">{selectedAlerta.nombre_producto}</h3>
-                <span className="text-xs font-mono text-gray-500">
+                <span className="text-xs text-gray-500">
                   {selectedAlerta.sku} • {selectedAlerta.categoria}
                 </span>
               </div>

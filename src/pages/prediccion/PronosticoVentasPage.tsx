@@ -494,17 +494,17 @@ export const PronosticoVentasPage: React.FC = () => {
                   const isPositive = item.variacionPct >= 0;
                   return (
                     <tr key={item.fecha_objetivo} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="py-4 px-6 font-medium text-gray-800">
+                      <td className="py-4 px-6 font-medium tabular-nums text-gray-800">
                         {formatDateLima(item.fecha_objetivo)}
                       </td>
-                      <td className="py-4 px-6 font-bold text-gray-900">
+                      <td className="py-4 px-6 font-bold tabular-nums text-gray-900">
                         {formatNumber(item.cantidad_proyectada)} unidades
                       </td>
-                      <td className="py-4 px-6 text-gray-600 font-mono text-xs">
+                      <td className="py-4 px-6 text-gray-600 tabular-nums text-xs">
                         [{formatNumber(item.intervalo_confianza_inf)} -{' '}
                         {formatNumber(item.intervalo_confianza_sup)}]
                       </td>
-                      <td className="py-4 px-6 text-right font-medium">
+                      <td className="py-4 px-6 text-right font-medium tabular-nums">
                         <span
                           className={`inline-flex items-center gap-1 font-semibold ${
                             isPositive ? 'text-emerald-600' : 'text-rose-600'
