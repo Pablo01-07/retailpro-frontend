@@ -9,6 +9,7 @@ import {
 } from '@/api/replenishment';
 import { downloadAuthenticatedBlob } from '@/lib/download';
 import { formatDateOnly } from '@/lib/formatters';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   Download,
   Loader2,
@@ -30,6 +31,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
   const [adjustReason, setAdjustReason] = useState<string>('Ajuste por lote mínimo / capacidad de almacén');
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const canEdit = user?.rol === 'administrador' || user?.rol === 'analista';
@@ -107,6 +109,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
     if (!canEdit) return;
     try {
       setIsExporting(true);
+      setErrorBanner(null);
       const res = await replenishmentApi.exportar({
         formato,
         categoria: selectedCategoria !== 'Todas' ? selectedCategoria : undefined,
@@ -116,7 +119,7 @@ export const RecomendacionesReposicionPage: React.FC = () => {
       setSuccessBanner(`Propuesta exportada exitosamente (${res.nombre_archivo}).`);
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch {
-      alert('Error al exportar la propuesta de reposición.');
+      setErrorBanner('No se pudo exportar la propuesta de reposición. Intente nuevamente.');
     } finally {
       setIsExporting(false);
     }
@@ -195,6 +198,14 @@ export const RecomendacionesReposicionPage: React.FC = () => {
           </span>
         </div>
       </div>
+
+      {errorBanner && (
+        <AlertBanner
+          type="danger"
+          message={errorBanner}
+          onClose={() => setErrorBanner(null)}
+        />
+      )}
 
       {successBanner && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm flex items-center justify-between shadow-sm animate-fade-in">

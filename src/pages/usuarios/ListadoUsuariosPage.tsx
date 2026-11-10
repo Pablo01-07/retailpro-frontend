@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, UserResponse, UserFilterParams } from '@/api/users';
 import { formatDateLima } from '@/lib/formatters';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   Plus,
   Pencil,
@@ -24,6 +25,7 @@ export const ListadoUsuariosPage: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const pageSize = 10;
   const [actionBanner, setActionBanner] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const { data: rolesData } = useQuery({
     queryKey: ['usuarios-roles'],
@@ -52,11 +54,12 @@ export const ListadoUsuariosPage: React.FC = () => {
     mutationFn: (userId: number) => usersApi.deactivateUser(userId),
     onSuccess: (u) => {
       queryClient.invalidateQueries({ queryKey: ['usuarios-list'] });
+      setErrorBanner(null);
       setActionBanner(`La cuenta de ${u.nombre_completo} ha sido desactivada.`);
       setTimeout(() => setActionBanner(null), 5000);
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || 'No se pudo desactivar el usuario.');
+      setErrorBanner(err.response?.data?.detail || 'No se pudo desactivar el usuario.');
     },
   });
 
@@ -64,11 +67,12 @@ export const ListadoUsuariosPage: React.FC = () => {
     mutationFn: (userId: number) => usersApi.updateUser(userId, { estado: true }),
     onSuccess: (u) => {
       queryClient.invalidateQueries({ queryKey: ['usuarios-list'] });
+      setErrorBanner(null);
       setActionBanner(`La cuenta de ${u.nombre_completo} ha sido reactivada exitosamente.`);
       setTimeout(() => setActionBanner(null), 5000);
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || 'No se pudo reactivar el usuario.');
+      setErrorBanner(err.response?.data?.detail || 'No se pudo reactivar el usuario.');
     },
   });
 
@@ -93,6 +97,14 @@ export const ListadoUsuariosPage: React.FC = () => {
           Gestione las identidades, roles asignados y el estado de accesos en el sistema
         </p>
       </div>
+
+      {errorBanner && (
+        <AlertBanner
+          type="danger"
+          message={errorBanner}
+          onClose={() => setErrorBanner(null)}
+        />
+      )}
 
       {actionBanner && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm flex items-center justify-between shadow-sm animate-fade-in">
