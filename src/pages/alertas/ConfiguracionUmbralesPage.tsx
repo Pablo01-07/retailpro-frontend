@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
@@ -45,11 +45,29 @@ export const ConfiguracionUmbralesPage: React.FC = () => {
     }
   }, [umbralesData]);
 
+  const configActiva = useMemo(() => {
+    const list = umbralesData?.umbrales || [];
+    const qProb = list.find((u) => u.tipo_umbral === 'quiebre_prob_min')?.valor;
+    const qDias = list.find((u) => u.tipo_umbral === 'quiebre_dias_cobertura')?.valor;
+    const sPct = list.find((u) => u.tipo_umbral === 'sobrestock_pct')?.valor;
+    const sDias = list.find((u) => u.tipo_umbral === 'sobrestock_dias')?.valor;
+
+    return {
+      quiebreProbMin: qProb ?? 0,
+      quiebreDiasCob: qDias ?? 0,
+      sobrestockPct: sPct ?? 0,
+      sobrestockDias: sDias ?? 0,
+    };
+  }, [umbralesData]);
+
   const saveMutation = useMutation({
     mutationFn: async (payload: ActualizarUmbralesRequest) => {
       return thresholdsApi.actualizarUmbrales(payload);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data) {
+        queryClient.setQueryData(['umbrales-configuracion'], data);
+      }
       queryClient.invalidateQueries({ queryKey: ['umbrales-configuracion'] });
       queryClient.invalidateQueries({ queryKey: ['centro-alertas'] });
       queryClient.invalidateQueries({ queryKey: ['active-alerts-count'] });
@@ -345,19 +363,19 @@ export const ConfiguracionUmbralesPage: React.FC = () => {
             <div className="bg-gray-50/80 rounded-xl p-4 divide-y divide-gray-200/60 text-xs font-medium">
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-gray-500">Probabilidad Quiebre</span>
-                <span className="font-bold text-gray-900">&gt;= {quiebreProbMin}%</span>
+                <span className="font-bold text-gray-900">&gt;= {configActiva.quiebreProbMin}%</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-gray-500">Cobertura Crítica</span>
-                <span className="font-bold text-gray-900">&lt; {quiebreDiasCob} días</span>
+                <span className="font-bold text-gray-900">&lt; {configActiva.quiebreDiasCob} días</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-gray-500">Límite Sobredemanda</span>
-                <span className="font-bold text-gray-900">{sobrestockPct}%</span>
+                <span className="font-bold text-gray-900">{configActiva.sobrestockPct}%</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-gray-500">Almacenamiento Máx.</span>
-                <span className="font-bold text-gray-900">{sobrestockDias} días</span>
+                <span className="font-bold text-gray-900">{configActiva.sobrestockDias} días</span>
               </div>
             </div>
 

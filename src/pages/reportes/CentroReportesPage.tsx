@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
@@ -54,6 +54,11 @@ export const CentroReportesPage: React.FC = () => {
     queryFn: () => forecastsApi.listPronosticos(),
     staleTime: 5 * 60 * 1000,
   });
+
+  const productosOrdenados = useMemo(() => {
+    if (!pronosticosData?.items) return [];
+    return [...pronosticosData.items].sort((a, b) => a.sku.localeCompare(b.sku));
+  }, [pronosticosData?.items]);
 
   const handleQuickExport = async (tipo: 'inventario' | 'ventas' | 'indicadores') => {
     if (!canExport) return;
@@ -301,13 +306,11 @@ export const CentroReportesPage: React.FC = () => {
                 className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-3.5 py-2 pr-9 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-700 shadow-sm cursor-pointer"
               >
                 <option value="Todos los productos">Todos los productos</option>
-                {pronosticosData?.items
-                  ?.filter((p: PronosticoSkuResumen) => selectedCategoria === 'Todas las categorías' || p.categoria === selectedCategoria)
-                  ?.map((p: PronosticoSkuResumen) => (
-                    <option key={p.sku} value={p.sku}>
-                      {p.sku} - {p.nombre_producto}
-                    </option>
-                  ))}
+                {productosOrdenados.map((p: PronosticoSkuResumen) => (
+                  <option key={p.sku} value={p.sku}>
+                    {p.sku} - {p.nombre_producto}
+                  </option>
+                ))}
               </select>
               <ChevronDown
                 size={14}
