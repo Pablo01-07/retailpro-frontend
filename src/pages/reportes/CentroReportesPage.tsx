@@ -130,9 +130,11 @@ export const CentroReportesPage: React.FC = () => {
 
   const handleDownloadHistorical = async (item: ReporteHistorialItem) => {
     try {
+      setErrorBanner(null);
       await downloadAuthenticatedBlob(item.url_descarga, item.nombre_archivo);
     } catch {
-      alert('Error al descargar el archivo histórico.');
+      setErrorBanner('No se pudo descargar el archivo del historial. Intente nuevamente.');
+      setLastFailedAction(null);
     }
   };
 

@@ -5,6 +5,7 @@ import { auditApi, AuditLogResponse, AuditFilterParams } from '@/api/audit';
 import { usersApi } from '@/api/users';
 import { formatDateTimeLima } from '@/lib/formatters';
 import { downloadAuthenticatedBlob } from '@/lib/download';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   Activity,
   CheckCircle2,
@@ -108,6 +109,7 @@ export const AuditoriaSistemaPage: React.FC = () => {
 
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const { data: usersData } = useQuery({
     queryKey: ['usuarios-auditoria-lookup'],
@@ -227,16 +229,41 @@ export const AuditoriaSistemaPage: React.FC = () => {
   const handleExportCsv = async () => {
     try {
       setIsExporting(true);
+      setErrorBanner(null);
       await downloadAuthenticatedBlob('/auditoria/exportar', 'auditoria_sistema.csv');
     } catch (err) {
-      alert('Error al descargar el archivo de auditoría.');
+      setErrorBanner('No se pudo exportar el registro de auditoría. Intente nuevamente.');
     } finally {
       setIsExporting(false);
     }
   };
 
   const getActionInfo = (accion: string) => {
-    const act = accion.toLowerCase();
+    const act = (accion || '').toLowerCase();
+    if (act.includes('logout') || act.includes('cierre_sesion') || act.includes('cierre')) {
+      return { label: 'Cierre de sesión', color: 'bg-blue-50 text-blue-700 border-blue-200' };
+    }
+    if (act.includes('alerta')) {
+      return { label: 'Gestión de alertas', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+    if (act.includes('reintento')) {
+      return { label: 'Reintento de ejecución', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+    }
+    if (act.includes('config')) {
+      let label = 'Configuración';
+      if (act.includes('proceso') || act.includes('carga') || act.includes('etl') || act.includes('pipeline')) {
+        label = 'Configuración de procesos';
+      } else if (act.includes('umbral') || act.includes('alerta')) {
+        label = 'Configuración de alertas';
+      } else if (act.includes('modelo') || act.includes('prediccion') || act.includes('pronostico')) {
+        label = 'Configuración de predicción';
+      } else if (act.includes('usuario')) {
+        label = 'Configuración de usuarios';
+      } else if (act.includes('sistema')) {
+        label = 'Configuración del sistema';
+      }
+      return { label, color: 'bg-teal-50 text-teal-700 border-teal-200' };
+    }
     if (act.includes('login') || act.includes('inicio_sesion') || act.includes('sesion')) {
       return { label: 'Inicio de sesión', color: 'bg-blue-50 text-blue-700 border-blue-200' };
     }
@@ -255,13 +282,12 @@ export const AuditoriaSistemaPage: React.FC = () => {
     if (act.includes('ajuste') || act.includes('reposicion') || act.includes('umbral')) {
       return { label: 'Edición parámetros', color: 'bg-teal-50 text-teal-700 border-teal-200' };
     }
-    if (act.includes('config')) {
-      return { label: accion, color: 'bg-teal-50 text-teal-700 border-teal-200' };
-    }
     if (act.includes('carga') || act.includes('etl') || act.includes('proceso')) {
       return { label: 'Procesamiento datos', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
     }
-    return { label: accion, color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    const clean = (accion || '').replace(/_/g, ' ').toLowerCase();
+    const fallbackLabel = clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : accion;
+    return { label: fallbackLabel, color: 'bg-gray-100 text-gray-700 border-gray-200' };
   };
 
   const getUserName = (log: AuditLogResponse) => {
@@ -312,7 +338,7 @@ export const AuditoriaSistemaPage: React.FC = () => {
     }
 
     if (act.includes('config')) {
-      return log.accion;
+      return `${getActionInfo(log.accion).label} registrada en el sistema.`;
     }
 
     if (act.includes('login') || act.includes('sesion')) {
@@ -385,6 +411,14 @@ export const AuditoriaSistemaPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {errorBanner && (
+        <AlertBanner
+          type="danger"
+          message={errorBanner}
+          onClose={() => setErrorBanner(null)}
+        />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -506,6 +540,9 @@ export const AuditoriaSistemaPage: React.FC = () => {
               >
                 <option value="todos">Todas las acciones</option>
                 <option value="login">Inicio de sesión</option>
+                <option value="logout">Cierre de sesión</option>
+                <option value="alerta">Gestión de alertas</option>
+                <option value="reintento">Reintento de ejecución</option>
                 <option value="fallido">Intento fallido</option>
                 <option value="usuario">Gestión de usuarios</option>
                 <option value="password">Cambio de contraseña</option>

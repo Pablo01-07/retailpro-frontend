@@ -9,6 +9,27 @@ import { AlertBanner } from '@/components/common/AlertBanner';
 import { ArrowLeft, Clock, RotateCcw, Loader2 } from 'lucide-react';
 import { formatDateTimeLima, formatDurationSeconds, formatNumber, getEstadoProcesoBadge } from '@/lib/formatters';
 
+const getGravedad = (
+  estado: string,
+  rechazados: number
+): { label: string; variant: 'danger' | 'warning' | 'success' } => {
+  const norm = (estado || '').toUpperCase().trim();
+  if (norm === 'COMPLETADO') {
+    return { label: 'Baja', variant: 'success' };
+  }
+  if (norm === 'CON_ADVERTENCIAS' || norm.includes('ADVERTENCIA')) {
+    return { label: 'Media', variant: 'warning' };
+  }
+  if (norm === 'FALLIDO') {
+    return rechazados > 50
+      ? { label: 'Alta', variant: 'danger' }
+      : { label: 'Media', variant: 'warning' };
+  }
+  return rechazados > 50
+    ? { label: 'Alta', variant: 'danger' }
+    : { label: 'Media', variant: 'warning' };
+};
+
 export const DetalleEjecucionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -285,9 +306,10 @@ export const DetalleEjecucionPage: React.FC = () => {
                     {detalle.registros_rechazados} registros
                   </td>
                   <td className="py-3.5 px-6 text-right">
-                    <Badge variant={detalle.registros_rechazados > 50 ? 'danger' : 'warning'}>
-                      {detalle.registros_rechazados > 50 ? 'Alta' : 'Mediana'}
-                    </Badge>
+                    {(() => {
+                      const g = getGravedad(detalle.estado, detalle.registros_rechazados);
+                      return <Badge variant={g.variant}>{g.label}</Badge>;
+                    })()}
                   </td>
                 </tr>
               </tbody>
