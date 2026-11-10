@@ -26,6 +26,11 @@ export const ExportacionPronosticoPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [lastFailedParams, setLastFailedParams] = useState<{
+    formato: 'csv' | 'xlsx' | 'pdf';
+    categoria?: string;
+    sku?: string;
+  } | null>(null);
 
   const {
     data: previewData,
@@ -54,18 +59,19 @@ export const ExportacionPronosticoPage: React.FC = () => {
 
   const hasNoRecords = !previewData?.items || previewData.items.length === 0;
 
-  const handleDownload = async () => {
+  const executeExport = async (params: {
+    formato: 'csv' | 'xlsx' | 'pdf';
+    categoria?: string;
+    sku?: string;
+  }) => {
     if (!isAdminOrAnalyst) return;
     try {
       setIsExporting(true);
       setErrorBanner(null);
-      const res = await reportsApi.exportarPronostico({
-        formato,
-        categoria: selectedCategoria !== 'Todas' ? selectedCategoria : undefined,
-        sku: selectedProducto !== 'Todos' ? selectedProducto : undefined,
-      });
+      const res = await reportsApi.exportarPronostico(params);
       await downloadAuthenticatedBlob(res.url_descarga, res.nombre_archivo);
       setSuccessBanner(`Archivo ${res.nombre_archivo} descargado exitosamente.`);
+      setLastFailedParams(null);
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: any) {
       const msg =
@@ -73,9 +79,18 @@ export const ExportacionPronosticoPage: React.FC = () => {
         err?.response?.data?.message ||
         'Error al descargar el archivo de pronóstico.';
       setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      setLastFailedParams(params);
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleDownload = () => {
+    executeExport({
+      formato,
+      categoria: selectedCategoria !== 'Todas' ? selectedCategoria : undefined,
+      sku: selectedProducto !== 'Todos' ? selectedProducto : undefined,
+    });
   };
 
   return (
@@ -121,8 +136,25 @@ export const ExportacionPronosticoPage: React.FC = () => {
       {errorBanner && (
         <AlertBanner
           type="danger"
-          message={errorBanner}
-          onClose={() => setErrorBanner(null)}
+          message={
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+              <span>{errorBanner}</span>
+              {lastFailedParams && (
+                <button
+                  type="button"
+                  onClick={() => executeExport(lastFailedParams)}
+                  disabled={isExporting}
+                  className="px-3 py-1.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer transition-colors shadow-xs"
+                >
+                  {isExporting ? 'Reintentando...' : 'Reintentar exportación'}
+                </button>
+              )}
+            </div>
+          }
+          onClose={() => {
+            setErrorBanner(null);
+            setLastFailedParams(null);
+          }}
         />
       )}
 

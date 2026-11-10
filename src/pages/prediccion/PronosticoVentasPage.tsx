@@ -89,7 +89,7 @@ export const PronosticoVentasPage: React.FC = () => {
   const isSku422 = (skuError as any)?.response?.status === 422;
   const sku422Message =
     (skuError as any)?.response?.data?.detail ||
-    'No se generan pronósticos para productos descontinuados';
+    'No se generan pronósticos para este producto';
 
   const generarMutation = useMutation({
     mutationFn: () => processesApi.ejecutarProceso('pronostico'),
@@ -293,10 +293,17 @@ export const PronosticoVentasPage: React.FC = () => {
             >
               {listData?.items?.map((item) => {
                 const isDescontinuado = (item.estado || '').toLowerCase() === 'descontinuado';
+                const isHistorialInsuficiente = item.historial_suficiente === false;
+                let etiquetaSuffix = '';
+                if (isDescontinuado) {
+                  etiquetaSuffix = ' (descontinuado)';
+                } else if (isHistorialInsuficiente) {
+                  etiquetaSuffix = ' (historial insuficiente)';
+                }
                 return (
                   <option key={item.sku} value={item.sku}>
                     {item.sku} - {item.nombre_producto}
-                    {isDescontinuado ? ' (descontinuado)' : ''}
+                    {etiquetaSuffix}
                   </option>
                 );
               })}

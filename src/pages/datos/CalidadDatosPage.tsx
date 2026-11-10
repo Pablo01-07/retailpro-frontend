@@ -3,8 +3,9 @@ import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dataApi } from '@/api/data';
 import { Badge } from '@/components/common/Badge';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import { Check, Calendar } from 'lucide-react';
-import { formatDateLima, formatNumber, formatPct } from '@/lib/formatters';
+import { formatDateLima, formatDateTimeLima, formatNumber, formatPct } from '@/lib/formatters';
 import {
   BarChart,
   Bar,
@@ -121,11 +122,16 @@ export const CalidadDatosPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {calidad?.ultima_carga_cumple === false && (
+        <AlertBanner
+          type="danger"
+          message={`Calidad insuficiente: la última carga (${calidad.ultima_carga_pct ?? 0}%) está por debajo del umbral de aceptación (${calidad.umbral_minimo_pct ?? 98}%).`}
+        />
+      )}
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex items-center gap-4">
           <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-
             <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 36 36">
               <path
                 className="text-gray-100"
@@ -187,6 +193,50 @@ export const CalidadDatosPage: React.FC = () => {
               <Check size={12} />
               {cumpleUmbral ? 'Cumple' : 'No cumple'}
             </span>
+          </div>
+        </div>
+
+        <div
+          className={`bg-white rounded-xl border p-5 shadow-sm flex flex-col justify-between ${
+            calidad?.ultima_carga_cumple === false
+              ? 'border-rose-400 bg-rose-50/30'
+              : 'border-gray-200'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="block text-xs font-medium text-gray-500">Última carga</span>
+            {calidad?.ultima_carga_cumple !== undefined && calidad?.ultima_carga_cumple !== null && (
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  calidad.ultima_carga_cumple
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-rose-100 text-rose-700 border border-rose-300'
+                }`}
+              >
+                {calidad.ultima_carga_cumple ? 'Cumple' : 'No cumple'}
+              </span>
+            )}
+          </div>
+          <div>
+            <span
+              className={`text-2xl font-extrabold ${
+                calidad?.ultima_carga_cumple === false ? 'text-red-600' : 'text-gray-900'
+              }`}
+            >
+              {calidad?.ultima_carga_pct !== undefined && calidad?.ultima_carga_pct !== null
+                ? `${calidad.ultima_carga_pct}%`
+                : '--'}
+            </span>
+          </div>
+          <div className="text-[11px] text-gray-500 mt-2 space-y-0.5">
+            <div className="capitalize font-medium text-gray-700">
+              Tipo: {calidad?.ultima_carga_tipo || '--'}
+            </div>
+            <div>
+              {calidad?.ultima_carga_fecha
+                ? formatDateTimeLima(calidad.ultima_carga_fecha)
+                : '--'}
+            </div>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ export interface AlertaItem {
   punto_reorden: number;
   dias_cobertura: number;
   probabilidad_quiebre: number;
+  excedente_estimado?: number | null;
   detalle_motivo: string;
 }
 

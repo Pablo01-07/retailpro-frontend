@@ -2,12 +2,15 @@ import { apiClient } from './client';
 
 export interface EstadoItem {
   ultima_actualizacion: string | null;
+  desactualizado?: boolean;
   total_registros: number;
   estado: string;
   detalle?: string | null;
 }
 
 export interface CategoriasItem {
+  ultima_actualizacion?: string | null;
+  desactualizado?: boolean;
   total_categorias: number;
   categorias: string[];
   estado: string;
@@ -110,6 +113,10 @@ export interface CalidadGlobalResponse {
   desglose_errores_etiquetas?: Record<string, number> | null;
   historico_cargas: CalidadHistoricoItem[];
   incidencias_frecuentes?: IncidenciaFrecuenteItem[] | null;
+  ultima_carga_pct?: number | null;
+  ultima_carga_fecha?: string | null;
+  ultima_carga_tipo?: string | null;
+  ultima_carga_cumple?: boolean | null;
 }
 
 export const dataApi = {

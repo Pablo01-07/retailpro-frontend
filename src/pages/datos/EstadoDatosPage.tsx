@@ -6,7 +6,7 @@ import { Badge } from '@/components/common/Badge';
 import { AlertBanner } from '@/components/common/AlertBanner';
 import { RefreshCw, Clock, Filter, Eye } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
-import { formatDateLima, formatDateTimeLima, formatNumber } from '@/lib/formatters';
+import { formatDateTimeLima, formatNumber } from '@/lib/formatters';
 
 export const EstadoDatosPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -51,6 +51,17 @@ export const EstadoDatosPage: React.FC = () => {
     if (tipoFiltro === 'todos') return true;
     return c.tipo_carga.toLowerCase() === tipoFiltro.toLowerCase();
   });
+
+  const isVentasDesact = estado?.ventas?.desactualizado === true || estado?.ventas?.estado?.toLowerCase() === 'desactualizado';
+  const isInvDesact = estado?.inventario?.desactualizado === true || estado?.inventario?.estado?.toLowerCase() === 'desactualizado';
+  const isProdDesact = estado?.catalogo?.desactualizado === true || estado?.catalogo?.estado?.toLowerCase() === 'desactualizado';
+  const isCatDesact = estado?.categorias?.desactualizado === true || estado?.categorias?.estado?.toLowerCase() === 'desactualizado';
+
+  const dimensionesDesactualizadas: string[] = [];
+  if (isVentasDesact) dimensionesDesactualizadas.push('Ventas');
+  if (isInvDesact) dimensionesDesactualizadas.push('Inventario');
+  if (isProdDesact) dimensionesDesactualizadas.push('Productos');
+  if (isCatDesact) dimensionesDesactualizadas.push('Categorías');
 
   return (
     <div className="space-y-6">
@@ -122,63 +133,67 @@ export const EstadoDatosPage: React.FC = () => {
         </div>
       </div>
 
-      {estado?.catalogo?.estado?.toLowerCase() === 'desactualizado' && (
+      {dimensionesDesactualizadas.length > 0 && (
         <AlertBanner
           type="warning"
-          message="Sincronización demorada: Los datos del catálogo de Productos no se han actualizado recientemente. Esto podría generar desviaciones en el pronóstico automático."
+          message={`Datos desactualizados: la información de ${dimensionesDesactualizadas.join(', ')} no se actualiza hace más de 24 horas.`}
         />
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isVentasDesact ? 'border-amber-400 bg-amber-50/20' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-900">Datos de Ventas</span>
-            <Badge status={estado?.ventas?.estado || 'Actualizado'}>
-              {estado?.ventas?.estado || 'Actualizado'}
+            <Badge variant={isVentasDesact ? 'warning' : 'success'}>
+              {isVentasDesact ? 'Desactualizado' : (estado?.ventas?.estado || 'Actualizado')}
             </Badge>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Clock size={15} className="shrink-0 text-gray-400" />
-            <span>Última actualización: {formatDateLima(estado?.ventas?.ultima_actualizacion)}</span>
+            <Clock size={15} className={`shrink-0 ${isVentasDesact ? 'text-amber-500' : 'text-gray-400'}`} />
+            <span>Última actualización: {formatDateTimeLima(estado?.ventas?.ultima_actualizacion)}</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isInvDesact ? 'border-amber-400 bg-amber-50/20' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-900 truncate">Datos de Inventario</span>
-            <Badge status={estado?.inventario?.estado || 'Actualizado'}>
-              {estado?.inventario?.estado || 'Actualizado'}
+            <Badge variant={isInvDesact ? 'warning' : 'success'}>
+              {isInvDesact ? 'Desactualizado' : (estado?.inventario?.estado || 'Actualizado')}
             </Badge>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Clock size={15} className="shrink-0 text-gray-400" />
-            <span>Última actualización: {formatDateLima(estado?.inventario?.ultima_actualizacion)}</span>
+            <Clock size={15} className={`shrink-0 ${isInvDesact ? 'text-amber-500' : 'text-gray-400'}`} />
+            <span>Última actualización: {formatDateTimeLima(estado?.inventario?.ultima_actualizacion)}</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isProdDesact ? 'border-amber-400 bg-amber-50/20' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-900 truncate">Datos de Productos</span>
-            <Badge status={estado?.catalogo?.estado || 'Actualizado'}>
-              {estado?.catalogo?.estado || 'Actualizado'}
+            <Badge variant={isProdDesact ? 'warning' : 'success'}>
+              {isProdDesact ? 'Desactualizado' : (estado?.catalogo?.estado || 'Actualizado')}
             </Badge>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Clock size={15} className="shrink-0 text-gray-400" />
-            <span>Última actualización: {formatDateLima(estado?.catalogo?.ultima_actualizacion)}</span>
+            <Clock size={15} className={`shrink-0 ${isProdDesact ? 'text-amber-500' : 'text-gray-400'}`} />
+            <span>Última actualización: {formatDateTimeLima(estado?.catalogo?.ultima_actualizacion)}</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isCatDesact ? 'border-amber-400 bg-amber-50/20' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-900 truncate">Datos de Categorías</span>
-            <Badge status={estado?.categorias?.estado || 'Actualizado'}>
-              {estado?.categorias?.estado || 'Actualizado'}
+            <Badge variant={isCatDesact ? 'warning' : 'success'}>
+              {isCatDesact ? 'Desactualizado' : (estado?.categorias?.estado || 'Actualizado')}
             </Badge>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Clock size={15} className="shrink-0 text-gray-400" />
-            <span>{estado?.categorias?.total_categorias ?? '--'} categorías activas</span>
+            <Clock size={15} className={`shrink-0 ${isCatDesact ? 'text-amber-500' : 'text-gray-400'}`} />
+            <span>
+              {isCatDesact && estado?.categorias?.ultima_actualizacion
+                ? `Última actualización: ${formatDateTimeLima(estado.categorias.ultima_actualizacion)}`
+                : `${estado?.categorias?.total_categorias ?? '--'} categorías activas`}
+            </span>
           </div>
         </div>
       </div>

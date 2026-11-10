@@ -36,6 +36,7 @@ export const CentroReportesPage: React.FC = () => {
   const [activeGenerating, setActiveGenerating] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [lastFailedAction, setLastFailedAction] = useState<(() => Promise<void>) | null>(null);
 
   const canExport = user?.rol === 'administrador' || user?.rol === 'analista';
 
@@ -78,6 +79,7 @@ export const CentroReportesPage: React.FC = () => {
       await downloadAuthenticatedBlob(res.url_descarga, res.nombre_archivo);
       queryClient.invalidateQueries({ queryKey: ['reportes-historial'] });
       setSuccessBanner(`Reporte de ${tipo} generado y descargado exitosamente.`);
+      setLastFailedAction(null);
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: any) {
       const msg =
@@ -85,6 +87,7 @@ export const CentroReportesPage: React.FC = () => {
         err?.response?.data?.message ||
         `Error al generar el reporte de ${tipo}.`;
       setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      setLastFailedAction(() => () => handleQuickExport(tipo));
     } finally {
       setActiveGenerating(null);
     }
@@ -101,6 +104,7 @@ export const CentroReportesPage: React.FC = () => {
       await downloadAuthenticatedBlob(res.url_descarga, res.nombre_archivo);
       queryClient.invalidateQueries({ queryKey: ['reportes-historial'] });
       setSuccessBanner(`Archivo ${res.nombre_archivo} descargado exitosamente.`);
+      setLastFailedAction(null);
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: any) {
       const msg =
@@ -108,6 +112,7 @@ export const CentroReportesPage: React.FC = () => {
         err?.response?.data?.message ||
         `Error al exportar en formato ${formato.toUpperCase()}.`;
       setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      setLastFailedAction(() => () => handleExportPronostico(formato));
     } finally {
       setActiveGenerating(null);
     }
@@ -166,8 +171,25 @@ export const CentroReportesPage: React.FC = () => {
       {errorBanner && (
         <AlertBanner
           type="danger"
-          message={errorBanner}
-          onClose={() => setErrorBanner(null)}
+          message={
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+              <span>{errorBanner}</span>
+              {lastFailedAction && (
+                <button
+                  type="button"
+                  onClick={() => lastFailedAction()}
+                  disabled={!!activeGenerating}
+                  className="px-3 py-1.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer transition-colors shadow-xs"
+                >
+                  {activeGenerating ? 'Reintentando...' : 'Reintentar exportación'}
+                </button>
+              )}
+            </div>
+          }
+          onClose={() => {
+            setErrorBanner(null);
+            setLastFailedAction(null);
+          }}
         />
       )}
 

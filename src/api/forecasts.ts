@@ -20,6 +20,7 @@ export interface PronosticoSkuResumen {
   nivel_incertidumbre: string;
   estado?: string;
   pronostico_disponible?: boolean;
+  historial_suficiente?: boolean;
   fecha_generacion?: string | null;
   version_modelo?: string | null;
 }

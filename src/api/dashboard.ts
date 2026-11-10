@@ -53,6 +53,8 @@ export interface DashboardResumenResponse {
   top_riesgo_quiebre: TopRiesgoQuiebreItem[];
   tendencia_diaria_general: TendenciaDiariaGeneralItem[];
   productos_mas_vendidos?: ProductoMasVendidoItem[];
+  ultima_actualizacion_datos?: string | null;
+  datos_desactualizados?: boolean;
 }
 
 export interface DashboardPowerBiResponse {

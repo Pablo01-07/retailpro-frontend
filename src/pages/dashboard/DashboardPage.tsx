@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
 import { dashboardApi } from '@/api/dashboard';
 import { forecastsApi } from '@/api/forecasts';
-import { formatNumber, formatDateLima } from '@/lib/formatters';
+import { formatNumber, formatDateLima, formatDateTimeLima } from '@/lib/formatters';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   Package,
   DollarSign,
@@ -236,6 +237,13 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {dashboardData?.datos_desactualizados && (
+        <AlertBanner
+          type="warning"
+          message={`Los datos mostrados fueron actualizados por última vez el ${formatDateTimeLima(dashboardData.ultima_actualizacion_datos)} (hace más de 48 horas) y podrían no reflejar el estado actual del inventario.`}
+        />
+      )}
 
       {showPowerBi && powerBiData?.embed_url ? (
         <div className="bg-white rounded-xl shadow-card border border-gray-100 p-4">

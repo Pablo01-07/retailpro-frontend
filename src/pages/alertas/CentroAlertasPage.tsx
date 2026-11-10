@@ -407,6 +407,16 @@ export const CentroAlertasPage: React.FC = () => {
                   {selectedAlerta.probabilidad_quiebre}%
                 </div>
               </div>
+              {(selectedAlerta.tipo_alerta || '').toUpperCase() === 'SOBRESTOCK' && (
+                <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200 col-span-2">
+                  <span className="text-amber-800 font-semibold">Excedente estimado</span>
+                  <div className="text-base font-bold text-amber-900 mt-1">
+                    {selectedAlerta.excedente_estimado !== undefined && selectedAlerta.excedente_estimado !== null
+                      ? `${selectedAlerta.excedente_estimado} unidades`
+                      : '0 unidades'}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-rose-50/60 p-3.5 rounded-xl border border-rose-100 text-xs">
