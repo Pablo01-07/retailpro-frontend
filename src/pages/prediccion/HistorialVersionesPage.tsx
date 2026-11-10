@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Info,
 } from 'lucide-react';
+import { Badge } from '@/components/common/Badge';
 
 interface FactorSHAPDivergente {
   featureKey: string;
@@ -116,6 +117,44 @@ export const HistorialVersionesPage: React.FC = () => {
     const maxVal = Math.max(...factoresDivergentes.map((f) => Math.abs(f.impacto)));
     return maxVal > 0 ? maxVal : 1;
   }, [factoresDivergentes]);
+
+  const degradacionesMap = useMemo(() => {
+    const map = new Map<
+      number,
+      { actual: number | string; anterior: number | string; versionAnterior: string }
+    >();
+    if (!historial || historial.length <= 1) return map;
+
+    for (let i = 0; i < historial.length; i++) {
+      const actual = historial[i];
+      let anterior: (typeof actual) | undefined = undefined;
+
+      for (let j = i + 1; j < historial.length; j++) {
+        const candidate = historial[j];
+        if (candidate.estado?.toUpperCase() !== 'DESCARTADA') {
+          anterior = candidate;
+          break;
+        }
+      }
+
+      if (
+        anterior &&
+        actual.mape !== null &&
+        actual.mape !== undefined &&
+        anterior.mape !== null &&
+        anterior.mape !== undefined &&
+        actual.mape > anterior.mape
+      ) {
+        map.set(actual.id_modelo, {
+          actual: actual.mape,
+          anterior: anterior.mape,
+          versionAnterior: anterior.version,
+        });
+      }
+    }
+
+    return map;
+  }, [historial]);
 
   return (
     <div className="space-y-6">
@@ -283,9 +322,18 @@ export const HistorialVersionesPage: React.FC = () => {
                         v.estado.toUpperCase() === 'ACTIVA' || v.estado === 'Activa';
                       const isDescartada =
                         v.estado.toUpperCase() === 'DESCARTADA' || v.estado === 'Descartada';
+                      const degradacion = degradacionesMap.get(v.id_modelo);
+                      const tieneDegradacion = !!degradacion;
 
                       return (
-                        <tr key={v.id_modelo} className="hover:bg-gray-50/60 transition-colors">
+                        <tr
+                          key={v.id_modelo}
+                          className={`transition-colors ${
+                            tieneDegradacion
+                              ? 'bg-rose-50 hover:bg-rose-100/70'
+                              : 'hover:bg-gray-50/60'
+                          }`}
+                        >
                           <td className="py-4 px-4 font-bold text-gray-900">
                             {formatModelVersion(v.version)}
                           </td>
@@ -306,7 +354,17 @@ export const HistorialVersionesPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
-                            {v.mape !== null && v.mape !== undefined ? formatPct(v.mape, 2) : '—'}
+                            <div>{v.mape !== null && v.mape !== undefined ? formatPct(v.mape, 2) : '—'}</div>
+                            {tieneDegradacion && degradacion && (
+                              <div className="mt-1">
+                                <Badge
+                                  variant="danger"
+                                  title={`MAPE ${degradacion.actual}% vs ${degradacion.anterior}% de la versión ${degradacion.versionAnterior}`}
+                                >
+                                  Degradación de desempeño detectada
+                                </Badge>
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
                             {v.wape !== null && v.wape !== undefined ? formatPct(v.wape, 2) : '—'}

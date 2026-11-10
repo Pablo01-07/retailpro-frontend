@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import { modelsApi } from '@/api/models';
 import { formatDateLima, formatPct, formatModelVersion } from '@/lib/formatters';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
@@ -25,7 +26,80 @@ export const FichaModeloPage: React.FC = () => {
     );
   }
 
+  const is404 =
+    (axios.isAxiosError(modeloError) && modeloError.response?.status === 404) ||
+    (modeloError as any)?.response?.status === 404 ||
+    (modeloError as any)?.status === 404;
+
   if (modeloError || !modelo) {
+    if (is404) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-6 border-b border-gray-200 text-sm font-medium">
+            <NavLink
+              to="/prediccion"
+              end
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Pronóstico de Ventas
+            </NavLink>
+            <NavLink
+              to="/prediccion/ficha"
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Ficha Técnica
+            </NavLink>
+            <NavLink
+              to="/prediccion/monitoreo"
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Monitoreo del Modelo
+            </NavLink>
+            <NavLink
+              to="/prediccion/historial"
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Historial y SHAP
+            </NavLink>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 p-6 rounded-xl flex items-start gap-3 shadow-sm">
+            <AlertTriangle size={24} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h2 className="font-bold text-base text-amber-900">Ficha técnica del modelo</h2>
+              <p className="text-sm mt-1 text-amber-800">
+                No hay un modelo publicado actualmente
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-rose-50 border border-rose-200 text-rose-700 p-6 rounded-xl flex items-start gap-3">
         <AlertTriangle size={24} className="shrink-0 mt-0.5" />

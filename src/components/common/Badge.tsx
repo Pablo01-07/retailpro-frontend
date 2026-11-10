@@ -8,6 +8,7 @@ interface BadgeProps {
   variant?: BadgeVariant;
   className?: string;
   status?: string;
+  title?: string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -15,6 +16,7 @@ export const Badge: React.FC<BadgeProps> = ({
   variant,
   className,
   status,
+  title,
 }) => {
   let resolvedVariant: BadgeVariant = variant || 'neutral';
 
@@ -76,6 +78,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   return (
     <span
+      title={title}
       className={clsx(
         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border',
         variantStyles[resolvedVariant],

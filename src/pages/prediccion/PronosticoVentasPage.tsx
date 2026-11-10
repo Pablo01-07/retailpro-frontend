@@ -23,6 +23,8 @@ import {
   TrendingDown,
   CheckCircle2,
 } from 'lucide-react';
+import { AlertBanner } from '@/components/common/AlertBanner';
+import { Badge } from '@/components/common/Badge';
 
 export const PronosticoVentasPage: React.FC = () => {
   const { user } = useAuth();
@@ -104,6 +106,7 @@ export const PronosticoVentasPage: React.FC = () => {
 
     const historicoCompleto = skuDetalle.historico_reciente || [];
     const historico = historicoCompleto.slice(-14);
+    const hayPronostico = skuDetalle.pronostico_disponible !== false;
 
     historico.forEach((h, idx) => {
       const isLast = idx === historico.length - 1;
@@ -111,24 +114,61 @@ export const PronosticoVentasPage: React.FC = () => {
         fechaLabel: formatDayMonthLima(h.fecha),
         rawDate: h.fecha,
         ventas_reales: Math.round(h.cantidad_vendida),
-        ventas_proyectadas: isLast ? Math.round(h.cantidad_vendida) : undefined,
+        ventas_proyectadas: isLast && hayPronostico ? Math.round(h.cantidad_vendida) : undefined,
         isToday: isLast,
       });
     });
 
-    const serie14 = skuDetalle.serie_14_dias || [];
-    serie14.forEach((d) => {
-      data.push({
-        fechaLabel: formatDayMonthLima(d.fecha_objetivo),
-        rawDate: d.fecha_objetivo,
-        ventas_proyectadas: Math.round(d.cantidad_proyectada),
-        inf: Math.round(d.intervalo_confianza_inf),
-        sup: Math.round(d.intervalo_confianza_sup),
+    if (hayPronostico) {
+      const serie14 = skuDetalle.serie_14_dias || [];
+      serie14.forEach((d) => {
+        data.push({
+          fechaLabel: formatDayMonthLima(d.fecha_objetivo),
+          rawDate: d.fecha_objetivo,
+          ventas_proyectadas: Math.round(d.cantidad_proyectada),
+          inf: Math.round(d.intervalo_confianza_inf),
+          sup: Math.round(d.intervalo_confianza_sup),
+        });
       });
-    });
+    }
 
     return data;
   }, [skuDetalle]);
+
+  const incertidumbreBadge = useMemo(() => {
+    if (!skuDetalle?.nivel_incertidumbre) return null;
+    const nivel = skuDetalle.nivel_incertidumbre.trim().toUpperCase();
+
+    if (nivel === 'ALTO') {
+      return (
+        <Badge
+          variant="danger"
+          title="El SKU presenta alta variabilidad histórica en sus ventas; interprete la proyección con cautela."
+        >
+          Alta incertidumbre
+        </Badge>
+      );
+    }
+    if (nivel === 'MEDIO') {
+      return (
+        <Badge variant="warning">
+          Incertidumbre media
+        </Badge>
+      );
+    }
+    if (nivel === 'BAJO') {
+      return (
+        <Badge variant="success">
+          Incertidumbre baja
+        </Badge>
+      );
+    }
+    return null;
+  }, [skuDetalle?.nivel_incertidumbre]);
+
+  const fechaGeneracion = skuDetalle
+    ? skuDetalle.fecha_generacion
+    : listData?.fecha_generacion;
 
   const serieConVariacion = useMemo(() => {
     if (!skuDetalle?.serie_14_dias) return [];
@@ -326,30 +366,44 @@ export const PronosticoVentasPage: React.FC = () => {
         </div>
       )}
 
+      {skuDetalle && skuDetalle.pronostico_disponible === false && (
+        <AlertBanner
+          type="warning"
+          message="Pronóstico no disponible para este producto"
+        />
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Evolución de ventas y proyección</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-base font-bold text-gray-900">Evolución de ventas y proyección</h2>
+              {incertidumbreBadge}
+            </div>
 
             <div className="flex items-center gap-5 mt-2 text-xs text-gray-600">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-0.5 bg-emerald-500 rounded-full inline-block"></span>
                 <span>Ventas reales (Histórico)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-0.5 border-t-2 border-dashed border-blue-600 inline-block"></span>
-                <span>Ventas pronosticadas (Proyección)</span>
-              </div>
+              {skuDetalle?.pronostico_disponible !== false && (
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-0.5 border-t-2 border-dashed border-blue-600 inline-block"></span>
+                  <span>Ventas pronosticadas (Proyección)</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
-            <Calendar size={14} className="text-gray-400" />
-            <span>
-              Pronóstico con datos hasta:{' '}
-              {formatDateOnly(skuDetalle?.fecha_generacion || listData?.fecha_generacion)}
-            </span>
-          </div>
+          {fechaGeneracion ? (
+            <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+              <Calendar size={14} className="text-gray-400" />
+              <span>
+                Pronóstico con datos hasta:{' '}
+                {formatDateOnly(fechaGeneracion)}
+              </span>
+            </div>
+          ) : null}
         </div>
 
         <div className="h-72 w-full">
@@ -423,106 +477,110 @@ export const PronosticoVentasPage: React.FC = () => {
                   connectNulls={false}
                 />
 
-                <Line
-                  type="monotone"
-                  dataKey="ventas_proyectadas"
-                  name="Ventas pronosticadas"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  strokeDasharray="4 4"
-                  dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                  connectNulls={true}
-                />
+                {skuDetalle?.pronostico_disponible !== false && (
+                  <Line
+                    type="monotone"
+                    dataKey="ventas_proyectadas"
+                    name="Ventas pronosticadas"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls={true}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
-        <div className="p-5 border-b border-gray-200/80 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-gray-900">Detalle de proyecciones</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Mostrando {serieConVariacion.length} de {serieConVariacion.length} días proyectados
-            </p>
+      {skuDetalle?.pronostico_disponible !== false && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
+          <div className="p-5 border-b border-gray-200/80 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Detalle de proyecciones</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Mostrando {serieConVariacion.length} de {serieConVariacion.length} días proyectados
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-200/80 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <th className="py-3 px-6">Fecha</th>
-                <th className="py-3 px-6">Ventas pronosticadas (Unidades)</th>
-                <th
-                  className="py-3 px-6 cursor-help"
-                  title="Intervalo de confianza al 95%: rango donde se proyecta la demanda real con 95% de certeza estadística"
-                >
-                  Intervalo de confianza (95%)
-                </th>
-                <th className="py-3 px-6 text-right">Variación estimada</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-28"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-24"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-20"></div>
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <div className="h-4 bg-gray-200 rounded w-16 ml-auto"></div>
-                    </td>
-                  </tr>
-                ))
-              ) : serieConVariacion.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-gray-500 text-sm">
-                    No hay proyecciones registradas para el SKU seleccionado.
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50/80 border-b border-gray-200/80 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="py-3 px-6">Fecha</th>
+                  <th className="py-3 px-6">Ventas pronosticadas (Unidades)</th>
+                  <th
+                    className="py-3 px-6 cursor-help"
+                    title="Intervalo de confianza al 95%: rango donde se proyecta la demanda real con 95% de certeza estadística"
+                  >
+                    Intervalo de confianza (95%)
+                  </th>
+                  <th className="py-3 px-6 text-right">Variación estimada</th>
                 </tr>
-              ) : (
-                serieConVariacion.map((item) => {
-                  const isPositive = item.variacionPct >= 0;
-                  return (
-                    <tr key={item.fecha_objetivo} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="py-4 px-6 font-medium tabular-nums text-gray-800">
-                        {formatDateLima(item.fecha_objetivo)}
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="py-4 px-6">
+                        <div className="h-4 bg-gray-200 rounded w-28"></div>
                       </td>
-                      <td className="py-4 px-6 font-bold tabular-nums text-gray-900">
-                        {formatNumber(item.cantidad_proyectada)} unidades
+                      <td className="py-4 px-6">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
                       </td>
-                      <td className="py-4 px-6 text-gray-600 tabular-nums text-xs">
-                        [{formatNumber(item.intervalo_confianza_inf)} -{' '}
-                        {formatNumber(item.intervalo_confianza_sup)}]
+                      <td className="py-4 px-6">
+                        <div className="h-4 bg-gray-200 rounded w-20"></div>
                       </td>
-                      <td className="py-4 px-6 text-right font-medium tabular-nums">
-                        <span
-                          className={`inline-flex items-center gap-1 font-semibold ${
-                            isPositive ? 'text-emerald-600' : 'text-rose-600'
-                          }`}
-                        >
-                          {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                          {isPositive ? '+' : ''}
-                          {formatPct(item.variacionPct, 1)}
-                        </span>
+                      <td className="py-4 px-6 text-right">
+                        <div className="h-4 bg-gray-200 rounded w-16 ml-auto"></div>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ))
+                ) : serieConVariacion.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-gray-500 text-sm">
+                      No hay proyecciones registradas para el SKU seleccionado.
+                    </td>
+                  </tr>
+                ) : (
+                  serieConVariacion.map((item) => {
+                    const isPositive = item.variacionPct >= 0;
+                    return (
+                      <tr key={item.fecha_objetivo} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="py-4 px-6 font-medium tabular-nums text-gray-800">
+                          {formatDateLima(item.fecha_objetivo)}
+                        </td>
+                        <td className="py-4 px-6 font-bold tabular-nums text-gray-900">
+                          {formatNumber(item.cantidad_proyectada)} unidades
+                        </td>
+                        <td className="py-4 px-6 text-gray-600 tabular-nums text-xs">
+                          [{formatNumber(item.intervalo_confianza_inf)} -{' '}
+                          {formatNumber(item.intervalo_confianza_sup)}]
+                        </td>
+                        <td className="py-4 px-6 text-right font-medium tabular-nums">
+                          <span
+                            className={`inline-flex items-center gap-1 font-semibold ${
+                              isPositive ? 'text-emerald-600' : 'text-rose-600'
+                            }`}
+                          >
+                            {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                            {isPositive ? '+' : ''}
+                            {formatPct(item.variacionPct, 1)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
