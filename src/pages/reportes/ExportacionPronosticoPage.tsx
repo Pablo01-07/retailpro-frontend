@@ -6,6 +6,7 @@ import { reportsApi } from '@/api/reports';
 import { forecastsApi, PronosticoSkuResumen } from '@/api/forecasts';
 import { downloadAuthenticatedBlob } from '@/lib/download';
 import { formatDateOnly, formatNumber } from '@/lib/formatters';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   Download,
   Loader2,
@@ -24,14 +25,19 @@ export const ExportacionPronosticoPage: React.FC = () => {
   const [formato, setFormato] = useState<'csv' | 'xlsx' | 'pdf'>('xlsx');
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const {
     data: previewData,
     isLoading: isPreviewLoading,
     error: previewError,
   } = useQuery({
-    queryKey: ['reporte-preview', selectedCategoria],
-    queryFn: () => reportsApi.getPreview(selectedCategoria !== 'Todas' ? selectedCategoria : undefined),
+    queryKey: ['reporte-preview', selectedCategoria, selectedProducto],
+    queryFn: () =>
+      reportsApi.getPreview(
+        selectedCategoria !== 'Todas' ? selectedCategoria : undefined,
+        selectedProducto !== 'Todos' ? selectedProducto : undefined
+      ),
     staleTime: 30000,
   });
 
@@ -41,19 +47,27 @@ export const ExportacionPronosticoPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  const hasNoRecords = !previewData?.items || previewData.items.length === 0;
+
   const handleDownload = async () => {
     if (!isAdminOrAnalyst) return;
     try {
       setIsExporting(true);
+      setErrorBanner(null);
       const res = await reportsApi.exportarPronostico({
         formato,
         categoria: selectedCategoria !== 'Todas' ? selectedCategoria : undefined,
+        sku: selectedProducto !== 'Todos' ? selectedProducto : undefined,
       });
       await downloadAuthenticatedBlob(res.url_descarga, res.nombre_archivo);
       setSuccessBanner(`Archivo ${res.nombre_archivo} descargado exitosamente.`);
       setTimeout(() => setSuccessBanner(null), 5000);
-    } catch {
-      alert('Error al descargar el archivo de pronóstico.');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        'Error al descargar el archivo de pronóstico.';
+      setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setIsExporting(false);
     }
@@ -98,6 +112,14 @@ export const ExportacionPronosticoPage: React.FC = () => {
           Filtre y descargue las proyecciones calculadas por el motor de inteligencia artificial
         </p>
       </div>
+
+      {errorBanner && (
+        <AlertBanner
+          type="danger"
+          message={errorBanner}
+          onClose={() => setErrorBanner(null)}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -216,8 +238,8 @@ export const ExportacionPronosticoPage: React.FC = () => {
           {isAdminOrAnalyst ? (
             <button
               onClick={handleDownload}
-              disabled={isExporting}
-              className="w-full py-2.5 px-4 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              disabled={isExporting || hasNoRecords || isPreviewLoading}
+              className="w-full py-2.5 px-4 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isExporting ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -274,30 +296,38 @@ export const ExportacionPronosticoPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-xs text-gray-700 font-medium">
-                    {previewData?.items.slice(0, 10).map((it) => (
-                      <tr key={it.sku} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="py-3 px-5">
-                          <div className="font-semibold text-gray-900 truncate max-w-[200px]">
-                            {it.nombre_producto}
-                          </div>
-                          <div className="text-[11px] text-gray-400">{it.sku}</div>
-                        </td>
-                        <td className="py-3 px-5 text-right font-bold tabular-nums text-gray-900">
-                          {formatNumber(it.demanda_proyectada_14d)} unidades
-                        </td>
-                        <td className="py-3 px-5 text-right tabular-nums text-gray-600">
-                          {formatNumber(it.stock_actual)} u.
-                        </td>
-                        <td className="py-3 px-5 text-right font-bold tabular-nums text-emerald-600">
-                          +{formatNumber(it.cantidad_sugerida)} u.
-                        </td>
-                        <td className="py-3 px-5 text-center">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 uppercase">
-                            {it.nivel_incertidumbre}
-                          </span>
+                    {hasNoRecords ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-gray-500 text-sm">
+                          No hay datos para los filtros seleccionados. Ajuste los filtros antes de exportar.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      previewData?.items.slice(0, 10).map((it) => (
+                        <tr key={it.sku} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 px-5">
+                            <div className="font-semibold text-gray-900 truncate max-w-[200px]">
+                              {it.nombre_producto}
+                            </div>
+                            <div className="text-[11px] text-gray-400">{it.sku}</div>
+                          </td>
+                          <td className="py-3 px-5 text-right font-bold tabular-nums text-gray-900">
+                            {formatNumber(it.demanda_proyectada_14d)} unidades
+                          </td>
+                          <td className="py-3 px-5 text-right tabular-nums text-gray-600">
+                            {formatNumber(it.stock_actual)} u.
+                          </td>
+                          <td className="py-3 px-5 text-right font-bold tabular-nums text-emerald-600">
+                            +{formatNumber(it.cantidad_sugerida)} u.
+                          </td>
+                          <td className="py-3 px-5 text-center">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 uppercase">
+                              {it.nivel_incertidumbre}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

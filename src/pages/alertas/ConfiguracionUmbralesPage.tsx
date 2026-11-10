@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
 import { thresholdsApi, ActualizarUmbralesRequest } from '@/api/thresholds';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -83,11 +84,23 @@ export const ConfiguracionUmbralesPage: React.FC = () => {
     e.preventDefault();
     if (!isAdmin) return;
 
+    const sDias = Number(sobrestockDias);
+    const qDias = Number(quiebreDiasCob);
+
+    if (sDias <= qDias) {
+      setSuccessBanner(null);
+      setErrorMessage(
+        'El umbral de sobrestock debe ser mayor al umbral de quiebre: los días máximos de cobertura en almacén deben ser mayores a los días de cobertura mínima.'
+      );
+      return;
+    }
+
+    setErrorMessage(null);
     saveMutation.mutate({
       quiebre_prob_min: Number(quiebreProbMin),
-      quiebre_dias_cobertura: Number(quiebreDiasCob),
+      quiebre_dias_cobertura: qDias,
       sobrestock_pct: Number(sobrestockPct),
-      sobrestock_dias: Number(sobrestockDias),
+      sobrestock_dias: sDias,
     });
   };
 
@@ -147,10 +160,11 @@ export const ConfiguracionUmbralesPage: React.FC = () => {
       )}
 
       {errorMessage && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-5 py-3 rounded-xl text-sm flex items-center gap-2">
-          <AlertTriangle size={18} className="text-rose-600 shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
+        <AlertBanner
+          type="danger"
+          message={errorMessage}
+          onClose={() => setErrorMessage(null)}
+        />
       )}
 
       {!isAdmin && (

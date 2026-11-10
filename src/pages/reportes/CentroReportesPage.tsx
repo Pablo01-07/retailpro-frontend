@@ -6,6 +6,7 @@ import { reportsApi, ReporteHistorialItem } from '@/api/reports';
 import { forecastsApi, PronosticoSkuResumen } from '@/api/forecasts';
 import { downloadAuthenticatedBlob } from '@/lib/download';
 import { formatDateTimeLima } from '@/lib/formatters';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   Package,
   TrendingUp,
@@ -34,6 +35,7 @@ export const CentroReportesPage: React.FC = () => {
   const [selectedProducto, setSelectedProducto] = useState<string>('Todos los productos');
   const [activeGenerating, setActiveGenerating] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const canExport = user?.rol === 'administrador' || user?.rol === 'analista';
 
@@ -57,6 +59,7 @@ export const CentroReportesPage: React.FC = () => {
     if (!canExport) return;
     try {
       setActiveGenerating(tipo);
+      setErrorBanner(null);
       const cat = selectedCategoria !== 'Todas las categorías' ? selectedCategoria : undefined;
       let res;
       if (tipo === 'inventario') {
@@ -71,8 +74,12 @@ export const CentroReportesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['reportes-historial'] });
       setSuccessBanner(`Reporte de ${tipo} generado y descargado exitosamente.`);
       setTimeout(() => setSuccessBanner(null), 5000);
-    } catch {
-      alert(`Error al generar el reporte de ${tipo}.`);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        `Error al generar el reporte de ${tipo}.`;
+      setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setActiveGenerating(null);
     }
@@ -82,14 +89,20 @@ export const CentroReportesPage: React.FC = () => {
     if (!canExport) return;
     try {
       setActiveGenerating(formato);
+      setErrorBanner(null);
       const cat = selectedCategoria !== 'Todas las categorías' ? selectedCategoria : undefined;
-      const res = await reportsApi.exportarPronostico({ formato, categoria: cat });
+      const sku = selectedProducto !== 'Todos los productos' ? selectedProducto : undefined;
+      const res = await reportsApi.exportarPronostico({ formato, categoria: cat, sku });
       await downloadAuthenticatedBlob(res.url_descarga, res.nombre_archivo);
       queryClient.invalidateQueries({ queryKey: ['reportes-historial'] });
       setSuccessBanner(`Archivo ${res.nombre_archivo} descargado exitosamente.`);
       setTimeout(() => setSuccessBanner(null), 5000);
-    } catch {
-      alert(`Error al exportar en formato ${formato.toUpperCase()}.`);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        `Error al exportar en formato ${formato.toUpperCase()}.`;
+      setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setActiveGenerating(null);
     }
@@ -144,6 +157,14 @@ export const CentroReportesPage: React.FC = () => {
           Genere, estructure y descargue informes detallados sobre inventarios y ventas
         </p>
       </div>
+
+      {errorBanner && (
+        <AlertBanner
+          type="danger"
+          message={errorBanner}
+          onClose={() => setErrorBanner(null)}
+        />
+      )}
 
       {successBanner && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm flex items-center justify-between shadow-sm animate-fade-in">

@@ -48,6 +48,7 @@ export interface ExportarReporteRequest {
   formato: 'csv' | 'xlsx' | 'pdf';
   tipo_reporte?: string;
   categoria?: string;
+  sku?: string;
 }
 
 export interface ExportarReporteConFiltrosRequest {
@@ -75,15 +76,25 @@ export const reportsApi = {
     return res.data;
   },
 
-  getPreview: async (categoria?: string): Promise<ReportePreviewResponse> => {
+  getPreview: async (categoria?: string, sku?: string): Promise<ReportePreviewResponse> => {
+    const params: Record<string, string> = {};
+    if (categoria) params.categoria = categoria;
+    if (sku) params.sku = sku;
     const res = await apiClient.get<ReportePreviewResponse>('/reportes/pronostico/preview', {
-      params: categoria ? { categoria } : undefined,
+      params: Object.keys(params).length > 0 ? params : undefined,
     });
     return res.data;
   },
 
-  exportarPronostico: async (payload: ExportarReporteRequest): Promise<ExportarReporteResponse> => {
-    const res = await apiClient.post<ExportarReporteResponse>('/reportes/pronostico/export', payload);
+  exportarPronostico: async (
+    payload: ExportarReporteRequest,
+    sku?: string
+  ): Promise<ExportarReporteResponse> => {
+    const body = {
+      ...payload,
+      ...(sku ? { sku } : {}),
+    };
+    const res = await apiClient.post<ExportarReporteResponse>('/reportes/pronostico/export', body);
     return res.data;
   },
 
