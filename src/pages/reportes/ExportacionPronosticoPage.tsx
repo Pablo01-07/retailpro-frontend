@@ -79,7 +79,12 @@ export const ExportacionPronosticoPage: React.FC = () => {
         err?.response?.data?.message ||
         'Error al descargar el archivo de pronóstico.';
       setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
-      setLastFailedParams(params);
+      const status = err?.response?.status;
+      if (!status || status >= 500) {
+        setLastFailedParams(params);
+      } else {
+        setLastFailedParams(null);
+      }
     } finally {
       setIsExporting(false);
     }

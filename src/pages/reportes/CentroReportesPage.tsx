@@ -87,7 +87,12 @@ export const CentroReportesPage: React.FC = () => {
         err?.response?.data?.message ||
         `Error al generar el reporte de ${tipo}.`;
       setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
-      setLastFailedAction(() => () => handleQuickExport(tipo));
+      const status = err?.response?.status;
+      if (!status || status >= 500) {
+        setLastFailedAction(() => () => handleQuickExport(tipo));
+      } else {
+        setLastFailedAction(null);
+      }
     } finally {
       setActiveGenerating(null);
     }
@@ -112,7 +117,12 @@ export const CentroReportesPage: React.FC = () => {
         err?.response?.data?.message ||
         `Error al exportar en formato ${formato.toUpperCase()}.`;
       setErrorBanner(typeof msg === 'string' ? msg : JSON.stringify(msg));
-      setLastFailedAction(() => () => handleExportPronostico(formato));
+      const status = err?.response?.status;
+      if (!status || status >= 500) {
+        setLastFailedAction(() => () => handleExportPronostico(formato));
+      } else {
+        setLastFailedAction(null);
+      }
     } finally {
       setActiveGenerating(null);
     }
