@@ -105,7 +105,10 @@ export const DetalleEjecucionPage: React.FC = () => {
     tipoNorm.includes('carga') ||
     tipoNorm.includes('etl');
 
-  const isFallido = (detalle.estado || '').toUpperCase() === 'FALLIDO';
+  const estadoNorm = (detalle.estado || '').toUpperCase().trim();
+  const isFallido = estadoNorm === 'FALLIDO';
+  const isConAdvertencias = estadoNorm === 'CON_ADVERTENCIAS' || estadoNorm.includes('ADVERTENCIA');
+  const isCompletado = estadoNorm === 'COMPLETADO';
   const estadoBadge = getEstadoProcesoBadge(detalle.estado);
   const reintentosCount = detalle.reintentos ?? 0;
   const isRetryDisabled =
@@ -192,8 +195,11 @@ export const DetalleEjecucionPage: React.FC = () => {
         />
       )}
 
-      {detalle.detalle_error && !resultBanner && (
-        <AlertBanner type="danger" message={detalle.detalle_error} />
+      {detalle.detalle_error && !resultBanner && !isCompletado && (
+        <AlertBanner
+          type={isConAdvertencias ? 'warning' : 'danger'}
+          message={detalle.detalle_error}
+        />
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm space-y-6">
