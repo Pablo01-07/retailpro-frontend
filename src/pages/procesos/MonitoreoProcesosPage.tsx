@@ -7,7 +7,7 @@ import { Badge } from '@/components/common/Badge';
 import { AlertBanner } from '@/components/common/AlertBanner';
 import { Play, Eye, RefreshCw } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
-import { formatDateTimeLima } from '@/lib/formatters';
+import { formatDateTimeLima, getEstadoProcesoBadge } from '@/lib/formatters';
 
 export const MonitoreoProcesosPage: React.FC = () => {
   const { user } = useAuth();
@@ -221,9 +221,10 @@ export const MonitoreoProcesosPage: React.FC = () => {
                           Sin ejecuciones
                         </span>
                       ) : (
-                        <Badge status={p.estado_ultima_ejecucion}>
-                          {p.estado_ultima_ejecucion}
-                        </Badge>
+                        (() => {
+                          const badge = getEstadoProcesoBadge(p.estado_ultima_ejecucion);
+                          return <Badge variant={badge.variant}>{badge.label}</Badge>;
+                        })()
                       )}
                     </td>
                     <td className="py-4 px-6 text-gray-600">

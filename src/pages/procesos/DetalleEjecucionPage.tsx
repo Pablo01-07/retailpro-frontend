@@ -7,7 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertBanner } from '@/components/common/AlertBanner';
 import { ArrowLeft, Clock, RotateCcw, Loader2 } from 'lucide-react';
-import { formatDateTimeLima, formatDurationSeconds, formatNumber } from '@/lib/formatters';
+import { formatDateTimeLima, formatDurationSeconds, formatNumber, getEstadoProcesoBadge } from '@/lib/formatters';
 
 export const DetalleEjecucionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +30,8 @@ export const DetalleEjecucionPage: React.FC = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['proceso-detalle', id] });
       queryClient.invalidateQueries({ queryKey: ['procesos'] });
-      if (res.estado?.toUpperCase() === 'COMPLETADO') {
+      const estadoResult = (res.estado || '').toUpperCase().trim();
+      if (estadoResult === 'COMPLETADO' || estadoResult === 'CON_ADVERTENCIAS') {
         setResultBanner({
           type: 'success',
           message: res.mensaje || 'Reintento exitoso: la ejecución se completó correctamente.',
@@ -84,6 +85,7 @@ export const DetalleEjecucionPage: React.FC = () => {
     tipoNorm.includes('etl');
 
   const isFallido = (detalle.estado || '').toUpperCase() === 'FALLIDO';
+  const estadoBadge = getEstadoProcesoBadge(detalle.estado);
   const reintentosCount = detalle.reintentos ?? 0;
   const isRetryDisabled =
     retryMutation.isPending ||
@@ -209,7 +211,7 @@ export const DetalleEjecucionPage: React.FC = () => {
                 )}
               </div>
             )}
-            <Badge status={detalle.estado}>{detalle.estado}</Badge>
+            <Badge variant={estadoBadge.variant}>{estadoBadge.label}</Badge>
           </div>
         </div>
 

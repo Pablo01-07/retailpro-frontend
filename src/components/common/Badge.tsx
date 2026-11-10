@@ -36,6 +36,7 @@ export const Badge: React.FC<BadgeProps> = ({
       resolvedVariant = 'success';
     } else if (
       s === 'CON_ADVERTENCIAS' ||
+      s === 'COMPLETADO CON ADVERTENCIAS' ||
       s === 'DESACTUALIZADO' ||
       s === 'PENDIENTE' ||
       s === 'MEDIA' ||
@@ -60,7 +61,7 @@ export const Badge: React.FC<BadgeProps> = ({
       s === 'AGOTADO'
     ) {
       resolvedVariant = 'danger';
-    } else if (s === 'EN PROGRESO' || s === 'INFO') {
+    } else if (s === 'EN PROGRESO' || s === 'EN_PROGRESO' || s === 'INFO') {
       resolvedVariant = 'info';
     } else if (s.includes('ADMIN') || s.includes('ROL') || s.includes('CAMBIO')) {
       resolvedVariant = 'purple';

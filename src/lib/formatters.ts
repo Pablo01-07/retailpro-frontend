@@ -164,3 +164,27 @@ export const formatNumOrDash = (
   if (val === undefined || val === null || isNaN(val)) return '—';
   return `${val.toFixed(decimals)}${suffix ? ` ${suffix}` : ''}`;
 };
+
+export interface EstadoProcesoBadgeConfig {
+  label: string;
+  variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+}
+
+export const getEstadoProcesoBadge = (estado?: string | null): EstadoProcesoBadgeConfig => {
+  const norm = (estado || '').toUpperCase().trim();
+  switch (norm) {
+    case 'COMPLETADO':
+      return { label: 'COMPLETADO', variant: 'success' };
+    case 'CON_ADVERTENCIAS':
+      return { label: 'COMPLETADO CON ADVERTENCIAS', variant: 'warning' };
+    case 'FALLIDO':
+      return { label: 'FALLIDO', variant: 'danger' };
+    case 'EN_PROGRESO':
+    case 'EN PROGRESO':
+      return { label: 'EN PROGRESO', variant: 'info' };
+    case 'PENDIENTE':
+      return { label: 'PENDIENTE', variant: 'warning' };
+    default:
+      return { label: estado || '--', variant: 'neutral' };
+  }
+};
