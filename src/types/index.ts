@@ -59,6 +59,7 @@ export interface PronosticoSkuDetalle {
   probabilidad_quiebre: number;
   nivel_incertidumbre: string;
   pronostico_disponible: boolean;
+  estado?: string;
   fecha_generacion?: string | null;
   id_modelo: number;
   version_modelo: string;

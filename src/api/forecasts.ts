@@ -18,6 +18,8 @@ export interface PronosticoSkuResumen {
   demanda_total_proyectada_14d: number;
   probabilidad_quiebre: number;
   nivel_incertidumbre: string;
+  estado?: string;
+  pronostico_disponible?: boolean;
   fecha_generacion?: string | null;
   version_modelo?: string | null;
 }
@@ -50,9 +52,15 @@ export interface TendenciasFilterParams {
 }
 
 export const forecastsApi = {
-  listPronosticos: async (categoria?: string): Promise<PronosticoListResponse> => {
+  listPronosticos: async (
+    categoria?: string,
+    incluirSinPronostico?: boolean
+  ): Promise<PronosticoListResponse> => {
+    const params: Record<string, any> = {};
+    if (categoria) params.categoria = categoria;
+    if (incluirSinPronostico !== undefined) params.incluir_sin_pronostico = incluirSinPronostico;
     const res = await apiClient.get<PronosticoListResponse>('/pronosticos', {
-      params: categoria ? { categoria } : undefined,
+      params: Object.keys(params).length > 0 ? params : undefined,
     });
     return res.data;
   },

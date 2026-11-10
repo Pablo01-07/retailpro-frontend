@@ -31,6 +31,18 @@ export interface DetalleEjecucionResponse {
   duracion_total_segundos?: number | null;
   etapas: EtapaProcesoItem[];
   detalle_error?: string | null;
+  reintentos?: number;
+  reintentos_max?: number;
+  reintento_permitido?: boolean;
+}
+
+export interface ReintentoEjecucionResponse {
+  id_carga: number;
+  estado: string;
+  reintentos: number;
+  reintentos_max: number;
+  reintento_permitido: boolean;
+  mensaje: string;
 }
 
 export interface ProcesoConfigPatchRequest {
@@ -97,6 +109,11 @@ export const processesApi = {
 
   getDetalleEjecucion: async (idCarga: number | string): Promise<DetalleEjecucionResponse> => {
     const res = await apiClient.get<DetalleEjecucionResponse>(`/procesos/${idCarga}`);
+    return res.data;
+  },
+
+  reintentarEjecucion: async (idCarga: number | string): Promise<ReintentoEjecucionResponse> => {
+    const res = await apiClient.post<ReintentoEjecucionResponse>(`/procesos/${encodeURIComponent(idCarga)}/reintentar`);
     return res.data;
   },
 

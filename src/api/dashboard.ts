@@ -86,6 +86,8 @@ export interface NivelServicioResponse {
   categoria_filtrada?: string | null;
   sku_filtrado?: string | null;
   periodo_filtrado?: string | null;
+  linea_base_historica_disponible?: boolean;
+  mensaje_linea_base?: string | null;
   por_categoria: NivelServicioCategoriaItem[];
 }
 

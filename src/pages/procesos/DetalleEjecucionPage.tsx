@@ -1,20 +1,63 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { processesApi } from '@/api/processes';
+import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertBanner } from '@/components/common/AlertBanner';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, RotateCcw, Loader2 } from 'lucide-react';
 import { formatDateTimeLima, formatDurationSeconds, formatNumber } from '@/lib/formatters';
 
 export const DetalleEjecucionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'administrador';
+  const queryClient = useQueryClient();
+
+  const [resultBanner, setResultBanner] = useState<{ type: 'success' | 'danger'; message: string } | null>(null);
+  const [warningBanner, setWarningBanner] = useState<string | null>(null);
+  const [isBlocked409, setIsBlocked409] = useState(false);
 
   const { data: detalle, isLoading } = useQuery({
     queryKey: ['proceso-detalle', id],
     queryFn: () => processesApi.getDetalleEjecucion(id!),
     enabled: !!id,
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: () => processesApi.reintentarEjecucion(id!),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['proceso-detalle', id] });
+      queryClient.invalidateQueries({ queryKey: ['procesos'] });
+      if (res.estado?.toUpperCase() === 'COMPLETADO') {
+        setResultBanner({
+          type: 'success',
+          message: res.mensaje || 'Reintento exitoso: la ejecución se completó correctamente.',
+        });
+      } else {
+        setResultBanner({
+          type: 'danger',
+          message: res.mensaje || 'El reintento no resolvió el problema.',
+        });
+      }
+      if (res.reintento_permitido === false) {
+        setIsBlocked409(true);
+      }
+    },
+    onError: (err: any) => {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail || 'No se pudo realizar el reintento.';
+      if (status === 409) {
+        setIsBlocked409(true);
+        setWarningBanner(detail);
+      } else {
+        setResultBanner({
+          type: 'danger',
+          message: detail,
+        });
+      }
+    },
   });
 
   if (isLoading) {
@@ -33,6 +76,28 @@ export const DetalleEjecucionPage: React.FC = () => {
       </div>
     );
   }
+
+  const tipoNorm = (detalle.tipo_proceso || '').toLowerCase();
+  const isCargaDatos =
+    ['ventas', 'inventario', 'productos'].includes(tipoNorm) ||
+    tipoNorm.includes('carga') ||
+    tipoNorm.includes('etl');
+
+  const isFallido = (detalle.estado || '').toUpperCase() === 'FALLIDO';
+  const reintentosCount = detalle.reintentos ?? 0;
+  const isRetryDisabled =
+    retryMutation.isPending ||
+    detalle.reintento_permitido === false ||
+    reintentosCount >= 3 ||
+    isBlocked409;
+
+  const activeWarningDetail =
+    warningBanner ||
+    (isFallido && isCargaDatos && detalle.reintento_permitido === false
+      ? reintentosCount >= 3
+        ? 'Se alcanzó el límite de 3 reintentos para esta ejecución. Contacte al equipo técnico o espere la siguiente ejecución programada.'
+        : 'El reintento no está permitido para esta ejecución.'
+      : null);
 
   const getTipoTitulo = (tipo: string) => {
     if (tipo === 'ventas') return 'Actualización de ventas';
@@ -72,7 +137,6 @@ export const DetalleEjecucionPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <Link to="/procesos" className="hover:text-brand-700 transition-colors">
           Monitoreo
@@ -90,7 +154,22 @@ export const DetalleEjecucionPage: React.FC = () => {
         </p>
       </div>
 
-      {detalle.detalle_error && (
+      {resultBanner && (
+        <AlertBanner
+          type={resultBanner.type}
+          message={resultBanner.message}
+          onClose={() => setResultBanner(null)}
+        />
+      )}
+
+      {activeWarningDetail && (
+        <AlertBanner
+          type="warning"
+          message={activeWarningDetail}
+        />
+      )}
+
+      {detalle.detalle_error && !resultBanner && (
         <AlertBanner type="danger" message={detalle.detalle_error} />
       )}
 
@@ -105,7 +184,33 @@ export const DetalleEjecucionPage: React.FC = () => {
             </p>
           </div>
 
-          <Badge status={detalle.estado}>{detalle.estado}</Badge>
+          <div className="flex flex-wrap items-center gap-3">
+            {isFallido && isCargaDatos && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 font-semibold tabular-nums">
+                  Reintentos: {reintentosCount}/3
+                </span>
+                {isAdmin && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={isRetryDisabled}
+                    onClick={() => retryMutation.mutate()}
+                    icon={
+                      retryMutation.isPending ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <RotateCcw size={14} />
+                      )
+                    }
+                  >
+                    {retryMutation.isPending ? 'Reintentando...' : 'Reintentar ejecución'}
+                  </Button>
+                )}
+              </div>
+            )}
+            <Badge status={detalle.estado}>{detalle.estado}</Badge>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">

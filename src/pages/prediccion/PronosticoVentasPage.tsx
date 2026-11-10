@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { NavLink, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/auth/useAuth';
 import { forecastsApi } from '@/api/forecasts';
 import { processesApi } from '@/api/processes';
-import { formatDateLima, formatDayMonthLima, formatDateOnly, formatNumber, formatPct } from '@/lib/formatters';
+import { useAuth } from '@/auth/useAuth';
+import { formatDateLima, formatDateOnly, formatDayMonthLima, formatNumber, formatPct } from '@/lib/formatters';
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,6 +13,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Area,
 } from 'recharts';
 import {
   Sparkles,
@@ -43,7 +44,11 @@ export const PronosticoVentasPage: React.FC = () => {
     error: listError,
   } = useQuery({
     queryKey: ['pronosticos', selectedCategoria],
-    queryFn: () => forecastsApi.listPronosticos(selectedCategoria === 'Todas' ? undefined : selectedCategoria),
+    queryFn: () =>
+      forecastsApi.listPronosticos(
+        selectedCategoria === 'Todas' ? undefined : selectedCategoria,
+        true
+      ),
   });
 
   const categorias = useMemo(() => {
@@ -78,7 +83,13 @@ export const PronosticoVentasPage: React.FC = () => {
     queryKey: ['pronostico-sku', selectedSku],
     queryFn: () => forecastsApi.getForecastBySku(selectedSku),
     enabled: !!selectedSku,
+    retry: false,
   });
+
+  const isSku422 = (skuError as any)?.response?.status === 422;
+  const sku422Message =
+    (skuError as any)?.response?.data?.detail ||
+    'No se generan pronósticos para productos descontinuados';
 
   const generarMutation = useMutation({
     mutationFn: () => processesApi.ejecutarProceso('pronostico'),
@@ -270,7 +281,6 @@ export const PronosticoVentasPage: React.FC = () => {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
-
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
               Producto/SKU
@@ -281,11 +291,15 @@ export const PronosticoVentasPage: React.FC = () => {
               disabled={isListLoading}
               className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 focus:border-brand-primary transition-all disabled:opacity-50"
             >
-              {listData?.items?.map((item) => (
-                <option key={item.sku} value={item.sku}>
-                  {item.sku} - {item.nombre_producto}
-                </option>
-              ))}
+              {listData?.items?.map((item) => {
+                const isDescontinuado = (item.estado || '').toLowerCase() === 'descontinuado';
+                return (
+                  <option key={item.sku} value={item.sku}>
+                    {item.sku} - {item.nombre_producto}
+                    {isDescontinuado ? ' (descontinuado)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -354,7 +368,14 @@ export const PronosticoVentasPage: React.FC = () => {
         </div>
       </div>
 
-      {(listError || skuError) && (
+      {isSku422 && (
+        <AlertBanner
+          type="warning"
+          message={sku422Message}
+        />
+      )}
+
+      {(listError || (skuError && !isSku422)) && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm flex items-start gap-3">
           <AlertCircle size={20} className="shrink-0 mt-0.5" />
           <div>
@@ -366,137 +387,149 @@ export const PronosticoVentasPage: React.FC = () => {
         </div>
       )}
 
-      {skuDetalle && skuDetalle.pronostico_disponible === false && (
+      {!isSku422 && skuDetalle && skuDetalle.pronostico_disponible === false && (
         <AlertBanner
           type="warning"
           message="Pronóstico no disponible para este producto"
         />
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-base font-bold text-gray-900">Evolución de ventas y proyección</h2>
-              {incertidumbreBadge}
+      {!isSku422 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-base font-bold text-gray-900">Evolución de ventas y proyección</h2>
+                {incertidumbreBadge}
+              </div>
+
+              <div className="flex items-center gap-5 mt-2 text-xs text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-0.5 bg-emerald-500 rounded-full inline-block"></span>
+                  <span>Ventas reales (Histórico)</span>
+                </div>
+                {skuDetalle?.pronostico_disponible !== false && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-0.5 border-t-2 border-dashed border-blue-600 inline-block"></span>
+                    <span>Ventas pronosticadas (Proyección)</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-5 mt-2 text-xs text-gray-600">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-0.5 bg-emerald-500 rounded-full inline-block"></span>
-                <span>Ventas reales (Histórico)</span>
+            {fechaGeneracion ? (
+              <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                <Calendar size={14} className="text-gray-400" />
+                <span>
+                  Pronóstico con datos hasta:{' '}
+                  {formatDateOnly(fechaGeneracion)}
+                </span>
               </div>
-              {skuDetalle?.pronostico_disponible !== false && (
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-0.5 border-t-2 border-dashed border-blue-600 inline-block"></span>
-                  <span>Ventas pronosticadas (Proyección)</span>
-                </div>
-              )}
-            </div>
+            ) : null}
           </div>
 
-          {fechaGeneracion ? (
-            <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
-              <Calendar size={14} className="text-gray-400" />
-              <span>
-                Pronóstico con datos hasta:{' '}
-                {formatDateOnly(fechaGeneracion)}
-              </span>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="h-72 w-full">
-          {isLoading ? (
-            <div className="h-full flex items-center justify-center flex-col gap-2 text-gray-400">
-              <Loader2 size={32} className="animate-spin text-brand-primary" />
-              <span className="text-xs font-medium">Cargando serie temporal...</span>
-            </div>
-          ) : chartData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-              No hay datos suficientes para graficar la serie temporal del SKU {selectedSku}.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="fechaLabel"
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
-                  dy={5}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `${val}`}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const dataPoint = payload[0].payload;
-                      return (
-                        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 text-xs space-y-1">
-                          <div className="font-semibold text-gray-900 border-b pb-1 mb-1">
-                            {label}
+          <div className="h-72 w-full">
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center flex-col gap-2 text-gray-400">
+                <Loader2 size={32} className="animate-spin text-brand-primary" />
+                <span className="text-xs font-medium">Cargando serie temporal...</span>
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                No hay datos suficientes para graficar la serie temporal del SKU {selectedSku}.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="fechaLabel"
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    dy={5}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val) => `${val}`}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const dataPoint = payload[0].payload;
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 text-xs space-y-1">
+                            <div className="font-semibold text-gray-900 border-b pb-1 mb-1">
+                              {label}
+                            </div>
+                            {dataPoint.ventas_reales !== undefined && (
+                              <div className="text-emerald-700 font-medium">
+                                Venta Real: {dataPoint.ventas_reales} u.
+                              </div>
+                            )}
+                            {dataPoint.ventas_proyectadas !== undefined && (
+                              <div className="text-blue-700 font-medium">
+                                Proyección: {dataPoint.ventas_proyectadas} u.
+                              </div>
+                            )}
+                            {dataPoint.inf !== undefined && dataPoint.sup !== undefined && (
+                              <div className="text-gray-500 text-[11px]">
+                                IC 95%: [{dataPoint.inf} - {dataPoint.sup}] u.
+                              </div>
+                            )}
                           </div>
-                          {dataPoint.ventas_reales !== undefined && (
-                            <div className="text-emerald-700 font-medium">
-                              Venta Real: {dataPoint.ventas_reales} u.
-                            </div>
-                          )}
-                          {dataPoint.ventas_proyectadas !== undefined && (
-                            <div className="text-blue-700 font-medium">
-                              Pronóstico: {dataPoint.ventas_proyectadas} u.
-                            </div>
-                          )}
-                          {dataPoint.inf !== undefined && dataPoint.sup !== undefined && (
-                            <div className="text-gray-500 text-[11px]">
-                              IC 95%: [{dataPoint.inf} - {dataPoint.sup}]
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
+                        );
+                      }
+                      return null;
+                    }}
+                  />
 
-                <Line
-                  type="monotone"
-                  dataKey="ventas_reales"
-                  name="Ventas reales"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                  connectNulls={false}
-                />
+                  {skuDetalle?.pronostico_disponible !== false && (
+                    <Area
+                      type="monotone"
+                      dataKey="sup"
+                      stroke="none"
+                      fill="#dbeafe"
+                      fillOpacity={0.5}
+                    />
+                  )}
 
-                {skuDetalle?.pronostico_disponible !== false && (
                   <Line
                     type="monotone"
-                    dataKey="ventas_proyectadas"
-                    name="Ventas pronosticadas"
-                    stroke="#2563eb"
+                    dataKey="ventas_reales"
+                    stroke="#10b981"
                     strokeWidth={2.5}
-                    strokeDasharray="4 4"
-                    dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
+                    dot={{ r: 3, fill: '#10b981' }}
                     activeDot={{ r: 5 }}
-                    connectNulls={true}
+                    isAnimationActive={false}
+                    connectNulls={false}
                   />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
 
-      {skuDetalle?.pronostico_disponible !== false && (
+                  {skuDetalle?.pronostico_disponible !== false && (
+                    <Line
+                      type="monotone"
+                      dataKey="ventas_proyectadas"
+                      stroke="#2563eb"
+                      strokeWidth={2.5}
+                      strokeDasharray="4 4"
+                      dot={{ r: 3, fill: '#2563eb' }}
+                      activeDot={{ r: 5 }}
+                      isAnimationActive={false}
+                      connectNulls={false}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!isSku422 && skuDetalle?.pronostico_disponible !== false && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
           <div className="p-5 border-b border-gray-200/80 flex items-center justify-between">
             <div>

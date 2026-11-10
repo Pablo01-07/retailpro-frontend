@@ -11,6 +11,7 @@ import {
   Info,
   Loader2,
 } from 'lucide-react';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   ResponsiveContainer,
   BarChart,
@@ -116,6 +117,17 @@ export const NivelServicioPage: React.FC = () => {
           Nivel de servicio (Fill Rate): porcentaje de demanda satisfecha inmediatamente desde stock sin incurrir en quiebres.
         </p>
       </div>
+
+      {nsData?.linea_base_historica_disponible === false && (
+        <AlertBanner
+          type="info"
+          title="Línea base histórica no disponible"
+          message={
+            nsData.mensaje_linea_base ||
+            'No se cuenta con suficiente historial de ventas para calcular la línea base histórica del nivel de servicio.'
+          }
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
