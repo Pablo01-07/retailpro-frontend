@@ -33,12 +33,23 @@ export const MonitoreoModeloPage: React.FC = () => {
       ? ficha.umbral_mape_max
       : null;
 
-  const mapeVigente =
+  const mape14dVigente =
+    ficha?.mape_14d !== null && ficha?.mape_14d !== undefined
+      ? ficha.mape_14d
+      : monitoreo?.mape_14d !== null && monitoreo?.mape_14d !== undefined
+      ? monitoreo.mape_14d
+      : monitoreo?.mape_14d_promedio_historico !== null && monitoreo?.mape_14d_promedio_historico !== undefined
+      ? monitoreo.mape_14d_promedio_historico
+      : null;
+
+  const mapeDiarioVigente =
     ficha?.mape !== null && ficha?.mape !== undefined
       ? ficha.mape
       : monitoreo?.mape_promedio_historico !== null && monitoreo?.mape_promedio_historico !== undefined
       ? monitoreo.mape_promedio_historico
       : null;
+
+  const mapeVigente = mape14dVigente !== null ? mape14dVigente : mapeDiarioVigente;
   const wapeVigente = ficha?.wape !== null && ficha?.wape !== undefined ? ficha.wape : null;
   const maeVigente = ficha?.mae !== null && ficha?.mae !== undefined ? ficha.mae : null;
   const rmseVigente = ficha?.rmse !== null && ficha?.rmse !== undefined ? ficha.rmse : null;
@@ -60,9 +71,17 @@ export const MonitoreoModeloPage: React.FC = () => {
     if (!monitoreo?.serie_mensual) return [];
     return monitoreo.serie_mensual.map((item, idx) => {
       const isLast = idx === monitoreo.serie_mensual.length - 1;
+      const valor14d =
+        item.mape_14d !== null && item.mape_14d !== undefined
+          ? Number(item.mape_14d.toFixed(2))
+          : item.mape !== null && item.mape !== undefined
+          ? Number(item.mape.toFixed(2))
+          : null;
       return {
         label: isLast ? `${item.periodo} (Hoy)` : item.periodo,
-        mape: item.mape !== null && item.mape !== undefined ? Number(item.mape.toFixed(2)) : null,
+        mape: valor14d,
+        mape_14d: item.mape_14d !== null && item.mape_14d !== undefined ? Number(item.mape_14d.toFixed(2)) : null,
+        mape_diario: item.mape !== null && item.mape !== undefined ? Number(item.mape.toFixed(2)) : null,
         corte: item.corte,
         mae: item.mae,
         rmse: item.rmse,
@@ -212,7 +231,7 @@ export const MonitoreoModeloPage: React.FC = () => {
         >
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-              MAPE Vigente
+              MAPE (demanda 14 días)
             </div>
             <div
               className={`text-2xl font-bold mt-1 ${
@@ -300,13 +319,13 @@ export const MonitoreoModeloPage: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h2 className="text-base font-bold text-gray-900">
-            Evolución mensual de MAPE vs Umbral crítico {umbralMape !== null ? `(${formatPct(umbralMape, 2)})` : ''}
+            Evolución mensual de MAPE (demanda 14 días) vs Umbral crítico {umbralMape !== null ? `(${formatPct(umbralMape, 2)})` : ''}
           </h2>
 
           <div className="flex items-center gap-6 text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span className="w-5 h-0.5 bg-blue-600 rounded-full inline-block"></span>
-              <span>MAPE Promedio</span>
+              <span>MAPE 14 días</span>
             </div>
             {umbralMape !== null && (
               <div className="flex items-center gap-2">
@@ -347,8 +366,13 @@ export const MonitoreoModeloPage: React.FC = () => {
                           {label} (Corte: {d.corte})
                         </div>
                         <div className="text-blue-600 font-bold">
-                          MAPE: {d.mape !== null && d.mape !== undefined ? `${Number(d.mape).toFixed(2)}%` : '—'}
+                          MAPE 14 días: {d.mape !== null && d.mape !== undefined ? `${Number(d.mape).toFixed(2)}%` : '—'}
                         </div>
+                        {d.mape_diario !== null && d.mape_diario !== undefined && (
+                          <div className="text-gray-600">
+                            MAPE diario: {Number(d.mape_diario).toFixed(2)}%
+                          </div>
+                        )}
                         <div className="text-gray-600">
                           MAE: {d.mae !== null && d.mae !== undefined ? `${Number(d.mae).toFixed(2)} u.` : '—'}
                         </div>
@@ -399,7 +423,7 @@ export const MonitoreoModeloPage: React.FC = () => {
               <Line
                 type="monotone"
                 dataKey="mape"
-                name="MAPE Promedio"
+                name="MAPE 14 días"
                 stroke="#2563eb"
                 strokeWidth={2.5}
                 dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
@@ -425,7 +449,8 @@ export const MonitoreoModeloPage: React.FC = () => {
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-200/80 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="py-3 px-6">Fecha de evaluación</th>
-                <th className="py-3 px-6">MAPE</th>
+                <th className="py-3 px-6">MAPE 14 días</th>
+                <th className="py-3 px-6">MAPE diario</th>
                 <th className="py-3 px-6">MAE</th>
                 <th className="py-3 px-6">RMSE</th>
                 <th className="py-3 px-6 text-right">Estado de validación</th>
@@ -434,7 +459,7 @@ export const MonitoreoModeloPage: React.FC = () => {
             <tbody className="divide-y divide-gray-100 text-sm">
               {monitoreo.serie_mensual?.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={6} className="py-8 text-center text-gray-500 text-sm">
                     No se registran evaluaciones históricas de backtesting.
                   </td>
                 </tr>
@@ -443,9 +468,13 @@ export const MonitoreoModeloPage: React.FC = () => {
                   ?.slice()
                   .reverse()
                   .map((item, idx) => {
+                    const val14d =
+                      item.mape_14d !== null && item.mape_14d !== undefined
+                        ? item.mape_14d
+                        : item.mape;
                     const isOk =
-                      umbralMape !== null && item.mape !== null && item.mape !== undefined
-                        ? item.mape <= umbralMape
+                      umbralMape !== null && val14d !== null && val14d !== undefined
+                        ? val14d <= umbralMape
                         : null;
                     return (
                       <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
@@ -453,6 +482,13 @@ export const MonitoreoModeloPage: React.FC = () => {
                           {item.periodo} ({item.corte})
                         </td>
                         <td className="py-4 px-6 font-bold tabular-nums text-gray-900">
+                          {item.mape_14d !== null && item.mape_14d !== undefined
+                            ? formatPct(item.mape_14d, 2)
+                            : item.mape !== null && item.mape !== undefined
+                            ? formatPct(item.mape, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-4 px-6 tabular-nums text-gray-700">
                           {item.mape !== null && item.mape !== undefined ? formatPct(item.mape, 2) : '—'}
                         </td>
                         <td className="py-4 px-6 text-gray-600 tabular-nums">

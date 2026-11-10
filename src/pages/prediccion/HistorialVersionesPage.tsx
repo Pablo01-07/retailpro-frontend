@@ -158,7 +158,7 @@ export const HistorialVersionesPage: React.FC = () => {
   const degradacionesMap = useMemo(() => {
     const map = new Map<
       number,
-      { actual: number | string; anterior: number | string; versionAnterior: string }
+      { actual: number | string; anterior: number | string; versionAnterior: string; es14d?: boolean }
     >();
     if (!historial || historial.length <= 1) return map;
 
@@ -174,19 +174,39 @@ export const HistorialVersionesPage: React.FC = () => {
         }
       }
 
-      if (
-        anterior &&
-        actual.mape !== null &&
-        actual.mape !== undefined &&
-        anterior.mape !== null &&
-        anterior.mape !== undefined &&
-        actual.mape > anterior.mape
-      ) {
-        map.set(actual.id_modelo, {
-          actual: actual.mape,
-          anterior: anterior.mape,
-          versionAnterior: anterior.version,
-        });
+      if (anterior) {
+        const hasBoth14d =
+          actual.mape_14d !== null &&
+          actual.mape_14d !== undefined &&
+          anterior.mape_14d !== null &&
+          anterior.mape_14d !== undefined;
+
+        const valActual = hasBoth14d
+          ? actual.mape_14d
+          : actual.mape !== null && actual.mape !== undefined
+          ? actual.mape
+          : null;
+
+        const valAnterior = hasBoth14d
+          ? anterior.mape_14d
+          : anterior.mape !== null && anterior.mape !== undefined
+          ? anterior.mape
+          : null;
+
+        if (
+          valActual !== null &&
+          valActual !== undefined &&
+          valAnterior !== null &&
+          valAnterior !== undefined &&
+          valActual > valAnterior
+        ) {
+          map.set(actual.id_modelo, {
+            actual: valActual,
+            anterior: valAnterior,
+            versionAnterior: anterior.version,
+            es14d: hasBoth14d,
+          });
+        }
       }
     }
 
@@ -383,7 +403,8 @@ export const HistorialVersionesPage: React.FC = () => {
                     <th className="py-3 px-4">Versión</th>
                     <th className="py-3 px-4">Fecha</th>
                     <th className="py-3 px-4">Estado</th>
-                    <th className="py-3 px-4">MAPE</th>
+                    <th className="py-3 px-4">MAPE 14 días</th>
+                    <th className="py-3 px-4">MAPE diario</th>
                     <th className="py-3 px-4">WAPE</th>
                     <th className="py-3 px-4">MAE</th>
                     <th className="py-3 px-4">RMSE</th>
@@ -415,6 +436,9 @@ export const HistorialVersionesPage: React.FC = () => {
                         <td className="py-4 px-4">
                           <div className="h-4 bg-gray-200 rounded w-12"></div>
                         </td>
+                        <td className="py-4 px-4">
+                          <div className="h-4 bg-gray-200 rounded w-12"></div>
+                        </td>
                         <td className="py-4 px-4 text-right">
                           <div className="h-6 bg-gray-200 rounded w-14 ml-auto"></div>
                         </td>
@@ -422,7 +446,7 @@ export const HistorialVersionesPage: React.FC = () => {
                     ))
                   ) : historialError ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-rose-600 text-sm">
+                      <td colSpan={9} className="py-8 text-center text-rose-600 text-sm">
                         Error al cargar el historial de versiones del modelo.
                       </td>
                     </tr>
@@ -464,17 +488,24 @@ export const HistorialVersionesPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
-                            <div>{v.mape !== null && v.mape !== undefined ? formatPct(v.mape, 2) : '—'}</div>
+                            <div>
+                              {v.mape_14d !== null && v.mape_14d !== undefined
+                                ? formatPct(v.mape_14d, 2)
+                                : '—'}
+                            </div>
                             {tieneDegradacion && degradacion && (
                               <div className="mt-1">
                                 <Badge
                                   variant="danger"
-                                  title={`MAPE ${degradacion.actual}% vs ${degradacion.anterior}% de la versión ${degradacion.versionAnterior}`}
+                                  title={`${degradacion.es14d ? 'MAPE 14d' : 'MAPE'} ${degradacion.actual}% vs ${degradacion.anterior}% de la versión ${degradacion.versionAnterior}`}
                                 >
                                   Degradación de desempeño detectada
                                 </Badge>
                               </div>
                             )}
+                          </td>
+                          <td className="py-4 px-4 tabular-nums text-gray-700">
+                            <div>{v.mape !== null && v.mape !== undefined ? formatPct(v.mape, 2) : '—'}</div>
                           </td>
                           <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
                             {v.wape !== null && v.wape !== undefined ? formatPct(v.wape, 2) : '—'}

@@ -15,6 +15,7 @@ export interface FichaModeloResponse {
   motivo_entrenamiento?: string | null;
   mae?: number | null;
   mape?: number | null;
+  mape_14d?: number | null;
   rmse?: number | null;
   wape?: number | null;
   cobertura_intervalo_95?: number | null;
@@ -28,6 +29,7 @@ export interface MapeMensualMonitoreoItem {
   periodo: string;
   corte: string;
   mape: number;
+  mape_14d?: number | null;
   rmse: number;
   mae: number;
   umbral_mape: number;
@@ -37,6 +39,8 @@ export interface MapeMensualMonitoreoItem {
 export interface ModeloMonitoreoResponse {
   version_activa: string;
   mape_promedio_historico: number;
+  mape_14d?: number | null;
+  mape_14d_promedio_historico?: number | null;
   umbral_mape_max: number;
   alerta_degradacion: boolean;
   total_cortes_evaluados: number;
@@ -52,9 +56,23 @@ export interface ModeloHistorialItem {
   motivo_entrenamiento?: string | null;
   mae?: number | null;
   mape?: number | null;
+  mape_14d?: number | null;
   rmse?: number | null;
   wape?: number | null;
   estado: string;
+}
+
+export interface ReevaluarModeloResponse {
+  mensaje: string;
+  id_modelo: number;
+  version: string;
+  mape_14d?: number | null;
+  mape?: number | null;
+  mae?: number | null;
+  rmse?: number | null;
+  wape?: number | null;
+  cobertura_intervalo_95?: number | null;
+  cortes_evaluados: number;
 }
 
 export const modelsApi = {
@@ -82,6 +100,11 @@ export const modelsApi = {
 
   triggerReentrenamiento: async (motivo?: string): Promise<FichaModeloResponse> => {
     const res = await apiClient.post<FichaModeloResponse>('/modelos/entrenar', { motivo });
+    return res.data;
+  },
+
+  reevaluarModeloActivo: async (): Promise<ReevaluarModeloResponse> => {
+    const res = await apiClient.post<ReevaluarModeloResponse>('/modelos/activa/reevaluar');
     return res.data;
   },
 };
