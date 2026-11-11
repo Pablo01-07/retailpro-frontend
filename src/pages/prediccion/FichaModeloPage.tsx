@@ -117,9 +117,9 @@ export const FichaModeloPage: React.FC = () => {
           <div className="bg-amber-50 border border-amber-200 text-amber-900 p-6 rounded-xl flex items-start gap-3 shadow-sm">
             <AlertTriangle size={24} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <h2 className="font-bold text-base text-amber-900">Ficha técnica del modelo</h2>
+              <h2 className="font-bold text-base text-amber-900">No hay un modelo publicado actualmente</h2>
               <p className="text-sm mt-1 text-amber-800">
-                No hay un modelo publicado actualmente
+                No hay un modelo publicado actualmente. Puede activar una versión existente desde el Historial de versiones.
               </p>
             </div>
           </div>

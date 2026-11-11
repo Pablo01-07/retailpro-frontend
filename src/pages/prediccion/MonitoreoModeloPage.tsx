@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { modelsApi } from '@/api/models';
 import { formatDateLima, formatPct, formatDateTime24Lima } from '@/lib/formatters';
+import { AlertBanner } from '@/components/common/AlertBanner';
 import {
   ResponsiveContainer,
   LineChart,
@@ -91,6 +92,16 @@ export const MonitoreoModeloPage: React.FC = () => {
     });
   }, [monitoreo]);
 
+  const hasModeloActivo = Boolean(
+    ficha &&
+    monitoreo?.version_activa &&
+    monitoreo.version_activa !== 'N/A'
+  );
+
+  const is404 =
+    (error as any)?.response?.status === 404 ||
+    (error as any)?.status === 404;
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400 gap-3">
@@ -101,6 +112,67 @@ export const MonitoreoModeloPage: React.FC = () => {
   }
 
   if (error || !monitoreo) {
+    if (is404) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-6 border-b border-gray-200 text-sm font-medium">
+            <NavLink
+              to="/prediccion"
+              end
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Pronóstico de Ventas
+            </NavLink>
+            <NavLink
+              to="/prediccion/ficha"
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Ficha Técnica
+            </NavLink>
+            <NavLink
+              to="/prediccion/monitoreo"
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Monitoreo del Modelo
+            </NavLink>
+            <NavLink
+              to="/prediccion/historial"
+              className={({ isActive }) =>
+                `pb-3 border-b-2 font-semibold transition-colors ${
+                  isActive
+                    ? 'border-brand-700 text-brand-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`
+              }
+            >
+              Historial y SHAP
+            </NavLink>
+          </div>
+          <AlertBanner
+            type="warning"
+            message="No hay un modelo publicado actualmente. Puede activar una versión existente desde el Historial de versiones."
+          />
+        </div>
+      );
+    }
     return (
       <div className="bg-rose-50 border border-rose-200 text-rose-700 p-6 rounded-xl flex items-start gap-3">
         <AlertCircle size={24} className="shrink-0 mt-0.5" />
@@ -183,6 +255,13 @@ export const MonitoreoModeloPage: React.FC = () => {
         </p>
       </div>
 
+      {!hasModeloActivo && (
+        <AlertBanner
+          type="warning"
+          message="No hay un modelo publicado actualmente. Puede activar una versión existente desde el Historial de versiones."
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
@@ -190,17 +269,23 @@ export const MonitoreoModeloPage: React.FC = () => {
             Estado del modelo
           </div>
           <div className="flex items-center gap-3 mt-3">
-            <span className="text-3xl font-extrabold text-gray-900">Activo</span>
+            <span className="text-3xl font-extrabold text-gray-900">
+              {hasModeloActivo ? 'Activo' : 'Sin publicar'}
+            </span>
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                alertaDegradacion === true
+                !hasModeloActivo
+                  ? 'bg-gray-100 text-gray-700 border border-gray-200'
+                  : alertaDegradacion === true
                   ? 'bg-amber-100 text-amber-800 border border-amber-200'
                   : alertaDegradacion === false
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                   : 'bg-gray-100 text-gray-700 border border-gray-200'
               }`}
             >
-              {alertaDegradacion === true
+              {!hasModeloActivo
+                ? 'Inactivo'
+                : alertaDegradacion === true
                 ? 'En observación'
                 : alertaDegradacion === false
                 ? 'Bueno'

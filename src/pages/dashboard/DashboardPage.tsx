@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
 import { dashboardApi } from '@/api/dashboard';
 import { forecastsApi } from '@/api/forecasts';
+import { modelsApi } from '@/api/models';
 import { formatNumber, formatDateLima, formatDateTimeLima } from '@/lib/formatters';
 import { AlertBanner } from '@/components/common/AlertBanner';
 import {
@@ -64,6 +65,16 @@ export const DashboardPage: React.FC = () => {
     queryFn: () => forecastsApi.getTendencias(),
     staleTime: 60000,
   });
+
+  const { error: modeloError } = useQuery({
+    queryKey: ['modelo-activa'],
+    queryFn: modelsApi.getFichaModeloActivo,
+    retry: false,
+  });
+
+  const isNoModelActive =
+    (modeloError as any)?.response?.status === 404 ||
+    (modeloError as any)?.status === 404;
 
   const totalSkus = dashboardData?.categorias.reduce((acc, c) => acc + c.total_skus, 0) || 0;
   const stockTotal = dashboardData?.categorias.reduce((acc, c) => acc + c.stock_total, 0) || 0;
@@ -242,6 +253,13 @@ export const DashboardPage: React.FC = () => {
         <AlertBanner
           type="warning"
           message={`Los datos mostrados fueron actualizados por última vez el ${formatDateTimeLima(dashboardData.ultima_actualizacion_datos)} (hace más de 48 horas) y podrían no reflejar el estado actual del inventario.`}
+        />
+      )}
+
+      {isNoModelActive && (
+        <AlertBanner
+          type="warning"
+          message="No hay un modelo publicado actualmente. Puede activar una versión existente desde el Historial de versiones."
         />
       )}
 

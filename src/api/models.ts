@@ -125,6 +125,14 @@ export interface DescartarModeloResponse {
   observacion?: string | null;
 }
 
+export interface RetirarModeloResponse {
+  mensaje: string;
+  id_modelo: number;
+  version: string;
+  estado: string;
+  observacion?: string | null;
+}
+
 export interface ReevaluarModeloResponse {
   mensaje: string;
   id_modelo: number;
@@ -154,10 +162,19 @@ export const modelsApi = {
     return res.data;
   },
 
-  activarVersionModelo: async (idModelo: number): Promise<{ mensaje: string; version_activa: string }> => {
-    const res = await apiClient.patch<{ mensaje: string; version_activa: string }>(
+  activarVersionModelo: async (
+    idModelo: number
+  ): Promise<{ mensaje?: string; version_activa?: string; version?: string } | ModeloHistorialItem> => {
+    const res = await apiClient.patch<any>(
       `/modelos/${idModelo}/activar`
     );
+    return res.data;
+  },
+
+  retirarModelo: async (idModelo: number, comentario: string): Promise<RetirarModeloResponse> => {
+    const res = await apiClient.post<RetirarModeloResponse>(`/modelos/${idModelo}/retirar`, {
+      comentario,
+    });
     return res.data;
   },
 

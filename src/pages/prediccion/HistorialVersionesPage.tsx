@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { modelsApi } from '@/api/models';
+import { modelsApi, ModeloHistorialItem } from '@/api/models';
 import { forecastsApi, PronosticoSkuDetalle } from '@/api/forecasts';
 import { useAuth } from '@/auth/useAuth';
 import { formatDateLima, formatPct, formatModelVersion } from '@/lib/formatters';
@@ -10,7 +10,6 @@ import { AlertBanner } from '@/components/common/AlertBanner';
 import { Badge } from '@/components/common/Badge';
 import {
   Loader2,
-  AlertCircle,
   CheckCircle2,
   AlertTriangle,
   Info,
@@ -61,6 +60,9 @@ export const HistorialVersionesPage: React.FC = () => {
   const [comparingModeloId, setComparingModeloId] = useState<number | null>(null);
   const [descartarComentario, setDescartarComentario] = useState<string>('');
   const [showDescartarInput, setShowDescartarInput] = useState<boolean>(false);
+  const [retirarModeloTarget, setRetirarModeloTarget] = useState<ModeloHistorialItem | null>(null);
+  const [retirarComentario, setRetirarComentario] = useState<string>('');
+  const [showRetirarModal, setShowRetirarModal] = useState<boolean>(false);
   const [entrenarMsg, setEntrenarMsg] = useState<{
     type: 'success' | 'danger';
     text: string;
@@ -110,12 +112,21 @@ export const HistorialVersionesPage: React.FC = () => {
 
   const activarMutation = useMutation({
     mutationFn: (idModelo: number) => modelsApi.activarVersionModelo(idModelo),
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setActivationError(null);
-      setActivationSuccess(data.mensaje || 'Versión activada exitosamente en producción.');
+      setActivationSuccess(
+        data?.mensaje ||
+        (data?.version ? `Versión ${data.version} activada exitosamente en producción. Se regeneraron los pronósticos.` : 'Versión activada exitosamente en producción.')
+      );
       queryClient.invalidateQueries({ queryKey: ['modelos-historial'] });
       queryClient.invalidateQueries({ queryKey: ['modelo-activa'] });
-      setTimeout(() => setActivationSuccess(null), 5000);
+      queryClient.invalidateQueries({ queryKey: ['modelo-monitoreo'] });
+      queryClient.invalidateQueries({ queryKey: ['pronosticos'] });
+      queryClient.invalidateQueries({ queryKey: ['pronostico-sku'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-resumen'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-modelos'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-cargas'] });
+      setTimeout(() => setActivationSuccess(null), 6000);
     },
     onError: (err: any) => {
       setActivationSuccess(null);
@@ -127,6 +138,44 @@ export const HistorialVersionesPage: React.FC = () => {
       setTimeout(() => setActivationError(null), 6000);
     },
   });
+
+  const retirarMutation = useMutation({
+    mutationFn: ({ id, comentario }: { id: number; comentario: string }) =>
+      modelsApi.retirarModelo(id, comentario),
+    onSuccess: (data) => {
+      setActivationSuccess(
+        data.mensaje || `Modelo ${data.version} retirado de producción. No hay un modelo publicado actualmente.`
+      );
+      setActivationError(null);
+      setShowRetirarModal(false);
+      setRetirarModeloTarget(null);
+      setRetirarComentario('');
+      queryClient.invalidateQueries({ queryKey: ['modelos-historial'] });
+      queryClient.invalidateQueries({ queryKey: ['modelo-activa'] });
+      queryClient.invalidateQueries({ queryKey: ['modelo-monitoreo'] });
+      queryClient.invalidateQueries({ queryKey: ['pronosticos'] });
+      queryClient.invalidateQueries({ queryKey: ['pronostico-sku'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-resumen'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-modelos'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-cargas'] });
+      setTimeout(() => setActivationSuccess(null), 6000);
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.mensaje ||
+        'Error al retirar el modelo de producción.';
+      setActivationError(msg);
+      setActivationSuccess(null);
+      setTimeout(() => setActivationError(null), 6000);
+    },
+  });
+
+  const handleConfirmActivar = (v: ModeloHistorialItem) => {
+    if (window.confirm(`Se activará la versión ${v.version} y se regenerarán los pronósticos.`)) {
+      activarMutation.mutate(v.id_modelo);
+    }
+  };
 
   const entrenarMutation = useMutation({
     mutationFn: () => modelsApi.triggerReentrenamiento('reentrenamiento_manual'),
@@ -181,6 +230,8 @@ export const HistorialVersionesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['modelo-activa'] });
       queryClient.invalidateQueries({ queryKey: ['modelo-monitoreo'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-resumen'] });
+      queryClient.invalidateQueries({ queryKey: ['pronosticos'] });
+      queryClient.invalidateQueries({ queryKey: ['pronostico-sku'] });
       queryClient.invalidateQueries({ queryKey: ['notificaciones-modelos'] });
       queryClient.invalidateQueries({ queryKey: ['notificaciones-cargas'] });
     },
@@ -546,33 +597,19 @@ export const HistorialVersionesPage: React.FC = () => {
       )}
 
       {activationSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg text-sm flex items-center justify-between shadow-sm animate-fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={18} className="text-emerald-600" />
-            <span>{activationSuccess}</span>
-          </div>
-          <button
-            onClick={() => setActivationSuccess(null)}
-            className="text-emerald-600 hover:text-emerald-800 font-medium text-xs"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AlertBanner
+          type="success"
+          message={activationSuccess}
+          onClose={() => setActivationSuccess(null)}
+        />
       )}
 
       {activationError && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between shadow-sm animate-fade-in">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={18} className="text-rose-600" />
-            <span>{activationError}</span>
-          </div>
-          <button
-            onClick={() => setActivationError(null)}
-            className="text-rose-600 hover:text-rose-800 font-medium text-xs"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AlertBanner
+          type="danger"
+          message={activationError}
+          onClose={() => setActivationError(null)}
+        />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -659,6 +696,9 @@ export const HistorialVersionesPage: React.FC = () => {
                       } else if (estadoNorm === 'CANDIDATA') {
                         badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
                         badgeText = 'En evaluación';
+                      } else if (estadoNorm === 'RETIRADA') {
+                        badgeColor = 'bg-gray-700 text-white border-gray-800';
+                        badgeText = 'Retirada';
                       } else if (estadoNorm === 'ANTERIOR') {
                         badgeColor = 'bg-gray-100 text-gray-700 border-gray-200';
                         badgeText = 'Anterior';
@@ -731,9 +771,24 @@ export const HistorialVersionesPage: React.FC = () => {
                           </td>
                           <td className="py-4 px-4 text-right">
                             {estadoNorm === 'ACTIVA' ? (
-                              <span className="text-xs text-emerald-600 font-semibold">
-                                En uso
-                              </span>
+                              <div className="inline-flex items-center justify-end gap-2">
+                                <span className="text-xs text-emerald-600 font-semibold">
+                                  En uso
+                                </span>
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setRetirarModeloTarget(v);
+                                      setRetirarComentario('');
+                                      setShowRetirarModal(true);
+                                    }}
+                                    className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded border border-rose-300 transition-colors cursor-pointer"
+                                  >
+                                    Retirar de producción
+                                  </button>
+                                )}
+                              </div>
                             ) : estadoNorm === 'APTA' || estadoNorm === 'DESCARTADA' ? (
                               <button
                                 type="button"
@@ -747,11 +802,11 @@ export const HistorialVersionesPage: React.FC = () => {
                                 <GitCompare size={13} />
                                 <span>Comparar</span>
                               </button>
-                            ) : estadoNorm === 'ANTERIOR' ? (
+                            ) : estadoNorm === 'ANTERIOR' || estadoNorm === 'RETIRADA' ? (
                               isAdmin ? (
                                 <button
                                   type="button"
-                                  onClick={() => activarMutation.mutate(v.id_modelo)}
+                                  onClick={() => handleConfirmActivar(v)}
                                   disabled={activarMutation.isPending}
                                   className="px-2.5 py-1 text-xs font-semibold text-brand-primary hover:text-brand-primary-hover hover:bg-emerald-50 rounded border border-brand-primary/30 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
@@ -776,7 +831,7 @@ export const HistorialVersionesPage: React.FC = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-gray-500 text-sm">
+                      <td colSpan={9} className="py-8 text-center text-gray-500 text-sm">
                         No hay versiones registradas.
                       </td>
                     </tr>
@@ -1298,6 +1353,86 @@ export const HistorialVersionesPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {showRetirarModal && retirarModeloTarget && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-base font-bold text-gray-900">
+                Retirar modelo de producción ({formatModelVersion(retirarModeloTarget.version)})
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!retirarMutation.isPending) {
+                    setShowRetirarModal(false);
+                    setRetirarModeloTarget(null);
+                    setRetirarComentario('');
+                  }
+                }}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3.5 rounded-xl text-xs flex items-start gap-2.5">
+              <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                Al retirar el modelo no habrá pronósticos ni alertas nuevas hasta activar otra versión.
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Comentario de retiro <span className="text-rose-600">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={retirarComentario}
+                onChange={(e) => setRetirarComentario(e.target.value)}
+                placeholder="Ingrese el comentario obligatorio para retirar el modelo..."
+                className="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRetirarModal(false);
+                  setRetirarModeloTarget(null);
+                  setRetirarComentario('');
+                }}
+                disabled={retirarMutation.isPending}
+                className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-200 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!retirarComentario.trim()) return;
+                  retirarMutation.mutate({
+                    id: retirarModeloTarget.id_modelo,
+                    comentario: retirarComentario.trim(),
+                  });
+                }}
+                disabled={!retirarComentario.trim() || retirarMutation.isPending}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
+              >
+                {retirarMutation.isPending ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Retirando...</span>
+                  </>
+                ) : (
+                  <span>Retirar</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

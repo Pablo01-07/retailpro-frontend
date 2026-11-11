@@ -22,7 +22,6 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  CheckCircle2,
 } from 'lucide-react';
 import { AlertBanner } from '@/components/common/AlertBanner';
 import { Badge } from '@/components/common/Badge';
@@ -37,6 +36,8 @@ export const PronosticoVentasPage: React.FC = () => {
   const [selectedSku, setSelectedSku] = useState<string>(urlSku);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('Todas');
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [generarError, setGenerarError] = useState<string | null>(null);
+  const [localWarning, setLocalWarning] = useState<string | null>(null);
 
   const {
     data: listData,
@@ -72,6 +73,9 @@ export const PronosticoVentasPage: React.FC = () => {
 
   const handleSkuChange = (newSku: string) => {
     setSelectedSku(newSku);
+    setSuccessBanner(null);
+    setGenerarError(null);
+    setLocalWarning(null);
     setSearchParams(newSku ? { sku: newSku } : {});
   };
 
@@ -91,16 +95,89 @@ export const PronosticoVentasPage: React.FC = () => {
     (skuError as any)?.response?.data?.detail ||
     'No se generan pronósticos para este producto';
 
+  const isNoModel = Boolean(
+    (listData && !listData.version_modelo) ||
+    ((skuError as any)?.response?.status === 404 &&
+      (String((skuError as any)?.response?.data?.detail || '').toLowerCase().includes('modelo') ||
+       String((skuError as any)?.response?.data?.detail || '').toLowerCase().includes('no existe')))
+  );
+
   const generarMutation = useMutation({
     mutationFn: () => processesApi.ejecutarProceso('pronostico'),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['pronosticos'] });
-      await queryClient.invalidateQueries({ queryKey: ['pronostico-sku'] });
-      await queryClient.refetchQueries({ queryKey: ['pronostico-sku', selectedSku] });
-      setSuccessBanner('Pronóstico generado exitosamente con el motor inteligente.');
-      setTimeout(() => setSuccessBanner(null), 4000);
+    onSuccess: async (data: any) => {
+      if (data?.estado === 'FALLIDO' || data?.status === 409 || data?.estado === 'fallido') {
+        setSuccessBanner(null);
+        const errMsg =
+          data?.error ||
+          data?.detail ||
+          (data?.mensaje && data.mensaje.includes('No hay un modelo publicado')
+            ? 'No hay un modelo publicado actualmente'
+            : data?.mensaje) ||
+          'No hay un modelo publicado actualmente';
+        setGenerarError(errMsg);
+        return;
+      }
+
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['pronosticos'] });
+        await queryClient.invalidateQueries({ queryKey: ['pronostico-sku'] });
+        await queryClient.refetchQueries({ queryKey: ['pronostico-sku', selectedSku] });
+
+        const skuQueryState = queryClient.getQueryState(['pronostico-sku', selectedSku]);
+        if (skuQueryState?.status === 'error') {
+          setSuccessBanner(null);
+          const err: any = skuQueryState.error;
+          const errDetail =
+            err?.response?.data?.detail ||
+            err?.response?.data?.mensaje ||
+            'Error al cargar el pronóstico del producto.';
+          setGenerarError(errDetail);
+          return;
+        }
+
+        setGenerarError(null);
+        setSuccessBanner('Pronóstico generado exitosamente con el motor inteligente.');
+        setTimeout(() => setSuccessBanner(null), 4000);
+      } catch (err: any) {
+        setSuccessBanner(null);
+        const errDetail =
+          err?.response?.data?.detail ||
+          err?.response?.data?.mensaje ||
+          'Error al actualizar pronósticos.';
+        setGenerarError(errDetail);
+      }
+    },
+    onError: (err: any) => {
+      setSuccessBanner(null);
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.mensaje ||
+        err?.message ||
+        'No hay un modelo publicado actualmente';
+      setGenerarError(msg);
     },
   });
+
+  const handleGenerarClick = () => {
+    setSuccessBanner(null);
+    setGenerarError(null);
+
+    const currentItem = listData?.items?.find((i) => i.sku === selectedSku);
+    const isDescontinuado = (currentItem?.estado || '').toLowerCase() === 'descontinuado';
+    const isHistorialInsuficiente = currentItem?.historial_suficiente === false;
+
+    if (isDescontinuado) {
+      setLocalWarning(sku422Message || 'No se generan pronósticos para productos descontinuados');
+      return;
+    }
+    if (isHistorialInsuficiente) {
+      setLocalWarning(sku422Message || 'Historial insuficiente para generar un pronóstico confiable');
+      return;
+    }
+
+    setLocalWarning(null);
+    generarMutation.mutate();
+  };
 
   const chartData = useMemo(() => {
     if (!skuDetalle) return [];
@@ -265,18 +342,24 @@ export const PronosticoVentasPage: React.FC = () => {
       </div>
 
       {successBanner && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg text-sm flex items-center justify-between shadow-sm animate-fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={18} className="text-emerald-600" />
-            <span>{successBanner}</span>
-          </div>
-          <button
-            onClick={() => setSuccessBanner(null)}
-            className="text-emerald-600 hover:text-emerald-800 font-medium text-xs"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AlertBanner
+          type="success"
+          message={successBanner}
+          onClose={() => setSuccessBanner(null)}
+        />
+      )}
+
+      {generarError && (
+        <AlertBanner
+          type={
+            generarError.toLowerCase().includes('modelo') ||
+            generarError.toLowerCase().includes('publicado')
+              ? 'warning'
+              : 'danger'
+          }
+          message={generarError}
+          onClose={() => setGenerarError(null)}
+        />
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -316,7 +399,12 @@ export const PronosticoVentasPage: React.FC = () => {
             </label>
             <select
               value={selectedCategoria}
-              onChange={(e) => setSelectedCategoria(e.target.value)}
+              onChange={(e) => {
+                setSuccessBanner(null);
+                setGenerarError(null);
+                setLocalWarning(null);
+                setSelectedCategoria(e.target.value);
+              }}
               disabled={isListLoading}
               className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 focus:border-brand-primary transition-all disabled:opacity-50"
             >
@@ -352,7 +440,7 @@ export const PronosticoVentasPage: React.FC = () => {
         >
           <button
             type="button"
-            onClick={() => generarMutation.mutate()}
+            onClick={handleGenerarClick}
             disabled={!canGenerate || generarMutation.isPending}
             className={`w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 font-semibold text-sm rounded-lg shadow-sm transition-all ${
               canGenerate
@@ -375,14 +463,22 @@ export const PronosticoVentasPage: React.FC = () => {
         </div>
       </div>
 
-      {isSku422 && (
+      {(localWarning || isSku422) && (
         <AlertBanner
           type="warning"
-          message={sku422Message}
+          message={localWarning || sku422Message}
+          onClose={localWarning ? () => setLocalWarning(null) : undefined}
         />
       )}
 
-      {(listError || (skuError && !isSku422)) && (
+      {isNoModel && !generarError && (
+        <AlertBanner
+          type="warning"
+          message="No hay un modelo publicado actualmente. Puede activar una versión existente desde el Historial de versiones."
+        />
+      )}
+
+      {!isNoModel && !isSku422 && !localWarning && !generarError && (listError || (skuError && !isSku422)) && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm flex items-start gap-3">
           <AlertCircle size={20} className="shrink-0 mt-0.5" />
           <div>
@@ -394,7 +490,7 @@ export const PronosticoVentasPage: React.FC = () => {
         </div>
       )}
 
-      {!isSku422 && skuDetalle && skuDetalle.pronostico_disponible === false && (
+      {!isSku422 && !isNoModel && skuDetalle && skuDetalle.pronostico_disponible === false && (
         <AlertBanner
           type="warning"
           message="Pronóstico no disponible para este producto"
@@ -443,7 +539,9 @@ export const PronosticoVentasPage: React.FC = () => {
               </div>
             ) : chartData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                No hay datos suficientes para graficar la serie temporal del SKU {selectedSku}.
+                {isNoModel
+                  ? 'No hay un modelo publicado actualmente'
+                  : `No hay datos suficientes para graficar la serie temporal del SKU ${selectedSku}.`}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -536,7 +634,7 @@ export const PronosticoVentasPage: React.FC = () => {
         </div>
       )}
 
-      {!isSku422 && skuDetalle?.pronostico_disponible !== false && (
+      {!isSku422 && !isNoModel && skuDetalle?.pronostico_disponible !== false && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
           <div className="p-5 border-b border-gray-200/80 flex items-center justify-between">
             <div>
