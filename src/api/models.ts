@@ -47,6 +47,7 @@ export interface ModeloMonitoreoResponse {
   cobertura_intervalo_95?: number | null;
   cobertura_fuera_muestra?: number | null;
   serie_mensual: MapeMensualMonitoreoItem[];
+  proximo_reentrenamiento_programado?: string | null;
 }
 
 export interface ModeloHistorialItem {
@@ -103,7 +104,9 @@ export interface ComparacionModeloResponse {
   cortes: CorteComparacionItem[];
   cumple_umbral: boolean;
   mejora_vigente: boolean;
+  comparacion_vigente?: 'mejora' | 'equivalente' | 'empeora' | string;
   umbral_mape: number;
+  umbral_mape_evaluacion?: number | null;
 }
 
 export interface PublicarModeloResponse {

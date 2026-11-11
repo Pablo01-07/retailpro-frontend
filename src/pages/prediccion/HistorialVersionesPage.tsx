@@ -154,6 +154,12 @@ export const HistorialVersionesPage: React.FC = () => {
     enabled: comparingModeloId !== null,
   });
 
+  const effectiveUmbral =
+    comparacion?.umbral_mape_evaluacion !== null &&
+    comparacion?.umbral_mape_evaluacion !== undefined
+      ? comparacion.umbral_mape_evaluacion
+      : (comparacion?.umbral_mape ?? 15);
+
   const publicarMutation = useMutation({
     mutationFn: (id: number) => modelsApi.publicarModelo(id),
     onSuccess: (data) => {
@@ -703,7 +709,7 @@ export const HistorialVersionesPage: React.FC = () => {
                             <div>{v.mape !== null && v.mape !== undefined ? formatPct(v.mape, 2) : '—'}</div>
                           </td>
                           <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
-                            {v.wape !== null && v.wape !== undefined ? formatPct(v.wape, 2) : '—'}
+                            {v.wape !== null && v.wape !== undefined && !isNaN(Number(v.wape)) ? formatPct(Number(v.wape), 2) : '—'}
                           </td>
                           <td className="py-4 px-4 text-gray-600 tabular-nums">
                             {v.mae !== null && v.mae !== undefined ? v.mae.toFixed(2) : '—'}
@@ -957,26 +963,26 @@ export const HistorialVersionesPage: React.FC = () => {
                       <AlertTriangle size={14} className="text-rose-700" />
                     )}
                     {comparacion.cumple_umbral
-                      ? `Cumple umbral (≤ ${comparacion.umbral_mape}%)`
-                      : `Supera umbral (> ${comparacion.umbral_mape}%)`}
+                      ? `Cumple umbral (≤ ${effectiveUmbral}%)`
+                      : `Supera umbral (> ${effectiveUmbral}%)`}
                   </span>
 
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                      comparacion.mejora_vigente
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : 'bg-amber-100 text-amber-800 border border-amber-200'
-                    }`}
-                  >
-                    {comparacion.mejora_vigente ? (
+                  {comparacion.comparacion_vigente === 'mejora' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                       <TrendingDown size={14} className="text-emerald-700" />
-                    ) : (
+                      Mejora al modelo vigente
+                    </span>
+                  ) : comparacion.comparacion_vigente === 'equivalente' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                      <CheckCircle2 size={14} className="text-gray-500" />
+                      Desempeño equivalente al vigente
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                       <AlertTriangle size={14} className="text-amber-700" />
-                    )}
-                    {comparacion.mejora_vigente
-                      ? 'Mejora precisión del modelo vigente'
-                      : 'No supera al modelo vigente'}
-                  </span>
+                      No supera al modelo vigente
+                    </span>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto border border-gray-200/80 rounded-xl">
@@ -1103,7 +1109,7 @@ export const HistorialVersionesPage: React.FC = () => {
                   <div className="flex items-center justify-between text-xs font-bold text-gray-900">
                     <span>Evolución de MAPE (demanda 14 días) por corte</span>
                     <span className="text-[11px] font-normal text-gray-500">
-                      Umbral de rechazo: {comparacion.umbral_mape}%
+                      Umbral de rechazo: {effectiveUmbral}%
                     </span>
                   </div>
 
@@ -1140,7 +1146,7 @@ export const HistorialVersionesPage: React.FC = () => {
                           tickLine={false}
                           axisLine={false}
                           tickFormatter={(val) => `${val}%`}
-                          domain={[0, Math.max(20, Math.ceil(comparacion.umbral_mape + 5))]}
+                          domain={[0, Math.max(20, Math.ceil(effectiveUmbral + 5))]}
                         />
                         <Tooltip
                           formatter={(val: any) =>
@@ -1149,12 +1155,12 @@ export const HistorialVersionesPage: React.FC = () => {
                         />
                         <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: '11px' }} />
                         <ReferenceLine
-                          y={comparacion.umbral_mape}
+                          y={effectiveUmbral}
                           stroke="#ef4444"
                           strokeDasharray="4 4"
                           strokeWidth={1.5}
                           label={{
-                            value: `${comparacion.umbral_mape}% Umbral máx`,
+                            value: `${effectiveUmbral}% Umbral máx`,
                             position: 'right',
                             fill: '#ef4444',
                             fontSize: 10,

@@ -266,7 +266,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
     const patchPayload: ProcesoConfigPatchRequest = {
       frecuencia: modalFrecuencia,
       hora: modalHora,
-      ...(modalFrecuencia === 'semanal' ? { dia_semana: Number(modalDiaSemana) } : {}),
+      ...((modalFrecuencia === 'semanal' || modalFrecuencia === 'cada_4_semanas') ? { dia_semana: Number(modalDiaSemana) } : {}),
       ...(isReent ? { reentrenamiento_umbral_registros: Number(modalUmbralRegistros) || 840 } : {}),
     };
 
@@ -548,7 +548,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                     const frecLower = (p.frecuencia || '').toLowerCase();
                     const frecDisplay =
                       frecLower === 'cada_4_semanas'
-                        ? 'Cada 4 semanas (Domingo)'
+                        ? `Cada 4 semanas (${getDiaLabel(p.dia_semana, p.dia)})`
                         : frecLower === 'semanal'
                         ? `Semanal (${getDiaLabel(p.dia_semana, p.dia)})`
                         : frecLower.charAt(0).toUpperCase() + frecLower.slice(1);
@@ -853,7 +853,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                 </div>
               )}
 
-              {modalFrecuencia === 'semanal' && (
+              {(modalFrecuencia === 'semanal' || modalFrecuencia === 'cada_4_semanas') && (
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">
                     Día de la semana

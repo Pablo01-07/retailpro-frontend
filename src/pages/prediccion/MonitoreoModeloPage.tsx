@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { modelsApi } from '@/api/models';
-import { formatDateLima, formatPct } from '@/lib/formatters';
+import { formatDateLima, formatPct, formatDateTime24Lima } from '@/lib/formatters';
 import {
   ResponsiveContainer,
   LineChart,
@@ -115,9 +115,9 @@ export const MonitoreoModeloPage: React.FC = () => {
   }
 
   const fechaUltimo = ficha?.fecha_entrenamiento ? formatDateLima(ficha.fecha_entrenamiento) : '--';
-  const fechaProximo = ficha?.fecha_entrenamiento
-    ? formatDateLima(new Date(new Date(ficha.fecha_entrenamiento).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString())
-    : '--';
+  const fechaProximo = monitoreo?.proximo_reentrenamiento_programado
+    ? formatDateTime24Lima(monitoreo.proximo_reentrenamiento_programado)
+    : 'Sin programación';
 
   return (
     <div className="space-y-6">
@@ -220,7 +220,7 @@ export const MonitoreoModeloPage: React.FC = () => {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Próximo reentrenamiento programado
           </div>
-          <div className="text-3xl font-extrabold text-gray-900 mt-3">{fechaProximo}</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-3">{fechaProximo}</div>
         </div>
       </div>
 

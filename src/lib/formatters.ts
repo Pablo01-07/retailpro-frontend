@@ -106,6 +106,28 @@ export const formatDateTimeLima = (dateStr?: string | null): string => {
   }
 };
 
+export const formatDateTime24Lima = (dateStr?: string | null): string => {
+  if (!dateStr) return 'Sin fecha';
+  try {
+    const iso = ensureUtcIso(dateStr);
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return dateStr;
+
+    const formatter = new Intl.DateTimeFormat('es-PE', {
+      timeZone: LIMA_TZ,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    return formatter.format(d).replace(',', '');
+  } catch {
+    return dateStr;
+  }
+};
+
 export const formatTimeLima = (dateStr?: string | null): string => {
   if (!dateStr) return '--:--';
   try {
