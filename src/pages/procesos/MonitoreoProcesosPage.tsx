@@ -233,6 +233,13 @@ export const MonitoreoProcesosPage: React.FC = () => {
                     <td className="py-4 px-6 text-gray-600">
                       {!p.ultima_ejecucion ? (
                         <span className="text-gray-400 italic text-xs">Sin ejecuciones</span>
+                      ) : (p.id_proceso.includes('reentrenamiento') || p.tipo.toLowerCase().includes('entrenamiento')) && (p.info || p.detalle_error) ? (
+                        <span
+                          className="truncate block max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg text-xs text-gray-800 font-medium"
+                          title={p.info || p.detalle_error || ''}
+                        >
+                          {p.info || p.detalle_error}
+                        </span>
                       ) : p.registros_afectados > 0 ? (
                         `${p.registros_afectados.toLocaleString()} registros`
                       ) : (

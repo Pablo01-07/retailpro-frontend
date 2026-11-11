@@ -11,6 +11,8 @@ export interface ProcesoItem {
   estado_ultima_ejecucion: string;
   id_ultima_carga?: number | null;
   registros_afectados: number;
+  info?: string | null;
+  detalle_error?: string | null;
 }
 
 export interface EtapaProcesoItem {

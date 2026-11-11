@@ -38,6 +38,15 @@ interface FactorSHAPDivergente {
   impacto: number;
 }
 
+const getMotivoEntrenamientoLabel = (motivo?: string | null): string => {
+  if (!motivo) return 'Entrenamiento inicial';
+  const norm = motivo.trim().toLowerCase();
+  if (norm === 'reentrenamiento_programado') return 'Programado (cada 4 semanas)';
+  if (norm === 'reentrenamiento_por_datos') return 'Por acumulación de datos';
+  if (norm === 'reentrenamiento_manual') return 'Manual';
+  return 'Entrenamiento inicial';
+};
+
 export const HistorialVersionesPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -670,8 +679,11 @@ export const HistorialVersionesPage: React.FC = () => {
                           <td className="py-4 px-4 font-bold text-gray-900">
                             {formatModelVersion(v.version)}
                           </td>
-                          <td className="py-4 px-4 text-gray-600 text-xs">
-                            {formatDateLima(v.fecha_entrenamiento)}
+                          <td className="py-4 px-4 text-xs">
+                            <div className="text-gray-700">{formatDateLima(v.fecha_entrenamiento)}</div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              {getMotivoEntrenamientoLabel(v.motivo_entrenamiento)}
+                            </div>
                           </td>
                           <td className="py-4 px-4">
                             <span
