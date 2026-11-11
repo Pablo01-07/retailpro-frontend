@@ -78,7 +78,7 @@ export const MonitoreoModeloPage: React.FC = () => {
           ? Number(item.mape.toFixed(2))
           : null;
       return {
-        label: isLast ? `${item.periodo} (Hoy)` : item.periodo,
+        label: item.periodo,
         mape: valor14d,
         mape_14d: item.mape_14d !== null && item.mape_14d !== undefined ? Number(item.mape_14d.toFixed(2)) : null,
         mape_diario: item.mape !== null && item.mape !== undefined ? Number(item.mape.toFixed(2)) : null,
@@ -86,6 +86,7 @@ export const MonitoreoModeloPage: React.FC = () => {
         mae: item.mae,
         rmse: item.rmse,
         estado: item.estado_alerta,
+        isLast,
       };
     });
   }, [monitoreo]);
@@ -338,12 +339,14 @@ export const MonitoreoModeloPage: React.FC = () => {
 
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 15, right: 30, left: 0, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 15, right: 40, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis
                 dataKey="label"
+                interval={0}
+                padding={{ left: 16, right: 24 }}
                 stroke="#94a3b8"
-                fontSize={11}
+                fontSize={10}
                 tickLine={false}
                 axisLine={{ stroke: '#e2e8f0' }}
                 dy={5}
@@ -363,7 +366,7 @@ export const MonitoreoModeloPage: React.FC = () => {
                     return (
                       <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 text-xs space-y-1">
                         <div className="font-semibold text-gray-900 border-b pb-1 mb-1">
-                          {label} (Corte: {d.corte})
+                          {label} {d.isLast ? '(Último corte)' : ''} (Corte: {d.corte})
                         </div>
                         <div className="text-blue-600 font-bold">
                           MAPE 14 días: {d.mape !== null && d.mape !== undefined ? `${Number(d.mape).toFixed(2)}%` : '—'}
@@ -428,6 +431,8 @@ export const MonitoreoModeloPage: React.FC = () => {
                 strokeWidth={2.5}
                 dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
                 activeDot={{ r: 5 }}
+                connectNulls={true}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

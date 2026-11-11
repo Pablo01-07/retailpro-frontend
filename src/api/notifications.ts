@@ -37,4 +37,11 @@ export const notificationsApi = {
     });
     return res.data;
   },
+
+  getNotificacionesModelos: async (limite: number = 10): Promise<NotificacionCargaItem[]> => {
+    const res = await apiClient.get<NotificacionCargaItem[]>('/notificaciones/modelos', {
+      params: { limite },
+    });
+    return res.data;
+  },
 };

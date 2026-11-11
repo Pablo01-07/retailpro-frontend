@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/auth/useAuth';
 import { ROLE_LABELS } from '@/types';
 import { Search, Bell, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { alertsApi } from '@/api/alerts';
 import { forecastsApi } from '@/api/forecasts';
-import { notificationsApi } from '@/api/notifications';
+import { notificationsApi, NotificacionCargaItem } from '@/api/notifications';
 import { formatDateTimeLima } from '@/lib/formatters';
 
 export const Topbar: React.FC = () => {
@@ -30,12 +30,41 @@ export const Topbar: React.FC = () => {
       ? alertsData.total_activas
       : (alertsData?.items?.filter((i) => (i.estado || '').toUpperCase() === 'ACTIVA').length ?? 0);
 
-  const { data: notificaciones, isLoading: isLoadingNotifs } = useQuery({
+  const { data: notifCargas, isLoading: isLoadingCargas } = useQuery({
     queryKey: ['notificaciones-cargas'],
     queryFn: () => notificationsApi.getNotificacionesCargas(10),
     enabled: isPanelOpen,
     refetchInterval: 30000,
   });
+
+  const { data: notifModelos, isLoading: isLoadingModelos } = useQuery({
+    queryKey: ['notificaciones-modelos'],
+    queryFn: () => notificationsApi.getNotificacionesModelos(10),
+    enabled: isPanelOpen,
+    refetchInterval: 30000,
+  });
+
+  const notificaciones = useMemo(() => {
+    const listCargas = notifCargas || [];
+    const listModelos = notifModelos || [];
+    const combined = [...listCargas];
+    const seen = new Set(
+      combined.map((c) => `${c.tipo_carga}_${c.id_carga}_${c.fecha_ejecucion}`)
+    );
+    for (const m of listModelos) {
+      const key = `${m.tipo_carga}_${m.id_carga}_${m.fecha_ejecucion}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(m);
+      }
+    }
+    combined.sort(
+      (a, b) => new Date(b.fecha_ejecucion).getTime() - new Date(a.fecha_ejecucion).getTime()
+    );
+    return combined.slice(0, 10);
+  }, [notifCargas, notifModelos]);
+
+  const isLoadingNotifs = isLoadingCargas || isLoadingModelos;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -81,10 +110,16 @@ export const Topbar: React.FC = () => {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const handleNotifClick = (tipo: string) => {
-    if (tipo === 'advertencia_calidad') {
+  const handleNotifClick = (item: NotificacionCargaItem) => {
+    if (item.tipo_carga === 'entrenamiento') {
+      setIsPanelOpen(false);
+      navigate('/prediccion/historial');
+      return;
+    }
+    if (item.tipo_notificacion === 'advertencia_calidad') {
       setIsPanelOpen(false);
       navigate('/datos/calidad');
+      return;
     }
   };
 
@@ -154,18 +189,33 @@ export const Topbar: React.FC = () => {
                   </div>
                 ) : (
                   notificaciones.map((item) => {
-                    const isAdv = item.tipo_notificacion === 'advertencia_calidad';
+                    const isModelo = item.tipo_carga === 'entrenamiento';
+                    const isDescartada =
+                      isModelo &&
+                      (item.tipo_notificacion === 'advertencia' ||
+                        item.mensaje.toLowerCase().includes('descartad'));
+                    const isApto =
+                      isModelo &&
+                      (item.tipo_notificacion === 'exito' ||
+                        item.mensaje.toLowerCase().includes('apto'));
+                    const isCalidadAdv = item.tipo_notificacion === 'advertencia_calidad';
+                    const isClickable = isModelo || isCalidadAdv;
+
                     return (
                       <div
-                        key={item.id_carga}
-                        onClick={() => handleNotifClick(item.tipo_notificacion)}
+                        key={`${item.tipo_carga}_${item.id_carga}_${item.fecha_ejecucion}`}
+                        onClick={() => handleNotifClick(item)}
                         className={`p-3.5 flex items-start gap-3 transition-colors ${
-                          isAdv
-                            ? 'cursor-pointer hover:bg-amber-50/60 bg-amber-50/20'
+                          isDescartada || isCalidadAdv
+                            ? 'cursor-pointer hover:bg-amber-50/70 bg-amber-50/20'
+                            : isApto
+                            ? 'cursor-pointer hover:bg-emerald-50/70 bg-emerald-50/20'
+                            : isClickable
+                            ? 'cursor-pointer hover:bg-gray-50/70'
                             : 'hover:bg-gray-50/70'
                         }`}
                       >
-                        {isAdv ? (
+                        {isDescartada || isCalidadAdv ? (
                           <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                         ) : (
                           <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />

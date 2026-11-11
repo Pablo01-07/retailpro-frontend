@@ -50,6 +50,7 @@ export interface ProcesoConfigPatchRequest {
   frecuencia?: string;
   hora?: string;
   dia_semana?: number;
+  reentrenamiento_umbral_registros?: number;
 }
 
 export interface ProcesoConfigItemResponse {
@@ -62,6 +63,7 @@ export interface ProcesoConfigItemResponse {
   dia_semana?: number | null;
   dia?: string | null;
   proxima_ejecucion?: string | null;
+  reentrenamiento_umbral_registros?: number | null;
 }
 
 export interface ProcesoConfigSchema {
@@ -85,6 +87,7 @@ export interface ProcesoConfigSchema {
   reentrenamiento_dia_semana?: number;
   reentrenamiento_hora: string;
   reentrenamiento_proxima_ejecucion?: string | null;
+  reentrenamiento_umbral_registros?: number | null;
 
   alertas_notificacion_email: string;
   correo_alertas?: string;

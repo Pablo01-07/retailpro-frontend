@@ -60,6 +60,66 @@ export interface ModeloHistorialItem {
   rmse?: number | null;
   wape?: number | null;
   estado: string;
+  observacion?: string | null;
+}
+
+export interface MetricasModeloItem {
+  id_modelo: number;
+  version: string;
+  estado: string;
+  mae?: number | null;
+  mape?: number | null;
+  rmse?: number | null;
+  wape?: number | null;
+  mape_14d?: number | null;
+  cobertura_intervalo_95?: number | null;
+}
+
+export interface DiferenciaMetricasItem {
+  mape_14d?: number | null;
+  mape?: number | null;
+  mae?: number | null;
+  rmse?: number | null;
+  wape?: number | null;
+  cobertura_intervalo_95?: number | null;
+}
+
+export interface CorteComparacionItem {
+  corte_idx: number;
+  periodo: string;
+  mape_14d_candidato?: number | null;
+  mape_14d_activa?: number | null;
+  diferencia?: number | null;
+}
+
+export interface ComparacionModeloResponse {
+  id_candidato: number;
+  version_candidato: string;
+  id_activa?: number | null;
+  version_activa?: string | null;
+  candidato: MetricasModeloItem;
+  activa?: MetricasModeloItem | null;
+  diferencia: DiferenciaMetricasItem;
+  cortes: CorteComparacionItem[];
+  cumple_umbral: boolean;
+  mejora_vigente: boolean;
+  umbral_mape: number;
+}
+
+export interface PublicarModeloResponse {
+  mensaje: string;
+  id_modelo: number;
+  version: string;
+  estado: string;
+  observacion?: string | null;
+}
+
+export interface DescartarModeloResponse {
+  mensaje: string;
+  id_modelo: number;
+  version: string;
+  estado: string;
+  observacion?: string | null;
 }
 
 export interface ReevaluarModeloResponse {
@@ -98,8 +158,27 @@ export const modelsApi = {
     return res.data;
   },
 
-  triggerReentrenamiento: async (motivo?: string): Promise<FichaModeloResponse> => {
-    const res = await apiClient.post<FichaModeloResponse>('/modelos/entrenar', { motivo });
+  triggerReentrenamiento: async (motivo?: string): Promise<{ mensaje: string }> => {
+    const res = await apiClient.post<{ mensaje: string }>('/modelos/entrenar', {
+      motivo: motivo || 'reentrenamiento_manual',
+    });
+    return res.data;
+  },
+
+  getComparacionModelo: async (idModelo: number): Promise<ComparacionModeloResponse> => {
+    const res = await apiClient.get<ComparacionModeloResponse>(`/modelos/${idModelo}/comparacion`);
+    return res.data;
+  },
+
+  publicarModelo: async (idModelo: number): Promise<PublicarModeloResponse> => {
+    const res = await apiClient.post<PublicarModeloResponse>(`/modelos/${idModelo}/publicar`);
+    return res.data;
+  },
+
+  descartarModelo: async (idModelo: number, comentario: string): Promise<DescartarModeloResponse> => {
+    const res = await apiClient.post<DescartarModeloResponse>(`/modelos/${idModelo}/descartar`, {
+      comentario,
+    });
     return res.data;
   },
 

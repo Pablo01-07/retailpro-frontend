@@ -78,6 +78,7 @@ export const ConfiguracionProcesosPage: React.FC = () => {
   const [modalFrecuencia, setModalFrecuencia] = useState<string>('diario');
   const [modalHora, setModalHora] = useState<string>('00:00');
   const [modalDiaSemana, setModalDiaSemana] = useState<number>(6);
+  const [modalUmbralRegistros, setModalUmbralRegistros] = useState<number>(840);
   const [modalMsg, setModalMsg] = useState<{
     type: 'success' | 'danger' | 'warning';
     message: string;
@@ -232,6 +233,16 @@ export const ConfiguracionProcesosPage: React.FC = () => {
         ? proceso.dia_semana
         : 6
     );
+    const isReent =
+      proceso.id_proceso.includes('reentrenamiento') ||
+      proceso.tipo.toLowerCase().includes('entrenamiento');
+    if (isReent) {
+      setModalUmbralRegistros(
+        proceso.reentrenamiento_umbral_registros ??
+          config?.reentrenamiento_umbral_registros ??
+          840
+      );
+    }
     setModalMsg(null);
     setConfirmEjecutar(false);
   };
@@ -248,10 +259,15 @@ export const ConfiguracionProcesosPage: React.FC = () => {
     setIsSavingModal(true);
     setModalMsg(null);
 
+    const isReent =
+      modalProceso.id_proceso.includes('reentrenamiento') ||
+      modalProceso.tipo.toLowerCase().includes('entrenamiento');
+
     const patchPayload: ProcesoConfigPatchRequest = {
       frecuencia: modalFrecuencia,
       hora: modalHora,
       ...(modalFrecuencia === 'semanal' ? { dia_semana: Number(modalDiaSemana) } : {}),
+      ...(isReent ? { reentrenamiento_umbral_registros: Number(modalUmbralRegistros) || 840 } : {}),
     };
 
     try {
@@ -531,7 +547,9 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                     const isToggling = togglingProcesoId === p.id_proceso;
                     const frecLower = (p.frecuencia || '').toLowerCase();
                     const frecDisplay =
-                      frecLower === 'semanal'
+                      frecLower === 'cada_4_semanas'
+                        ? 'Cada 4 semanas (Domingo)'
+                        : frecLower === 'semanal'
                         ? `Semanal (${getDiaLabel(p.dia_semana, p.dia)})`
                         : frecLower.charAt(0).toUpperCase() + frecLower.slice(1);
 
@@ -811,9 +829,29 @@ export const ConfiguracionProcesosPage: React.FC = () => {
                 >
                   <option value="diario">Diario</option>
                   <option value="semanal">Semanal</option>
+                  <option value="cada_4_semanas">Cada 4 semanas</option>
                   <option value="mensual">Mensual</option>
                 </select>
               </div>
+
+              {(modalProceso.id_proceso.includes('reentrenamiento') ||
+                modalProceso.tipo.toLowerCase().includes('entrenamiento')) && (
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    Volumen mínimo de nuevos registros para reentrenamiento anticipado
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={modalUmbralRegistros}
+                    onChange={(e) => setModalUmbralRegistros(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm tabular-nums text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-700/40"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Cantidad acumulada de nuevas transacciones para activar el reentrenamiento automático fuera de ciclo (por defecto 840).
+                  </p>
+                </div>
+              )}
 
               {modalFrecuencia === 'semanal' && (
                 <div>

@@ -6,13 +6,31 @@ import { forecastsApi, PronosticoSkuDetalle } from '@/api/forecasts';
 import { useAuth } from '@/auth/useAuth';
 import { formatDateLima, formatPct, formatModelVersion } from '@/lib/formatters';
 import { formatFeatureLabel } from '@/lib/dictionaries';
+import { AlertBanner } from '@/components/common/AlertBanner';
+import { Badge } from '@/components/common/Badge';
 import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  AlertTriangle,
   Info,
+  Sparkles,
+  GitCompare,
+  X,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
-import { Badge } from '@/components/common/Badge';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  Legend,
+} from 'recharts';
 
 interface FactorSHAPDivergente {
   featureKey: string;
@@ -30,6 +48,14 @@ export const HistorialVersionesPage: React.FC = () => {
   const [isComparing, setIsComparing] = useState<boolean>(false);
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationSuccess, setActivationSuccess] = useState<string | null>(null);
+
+  const [comparingModeloId, setComparingModeloId] = useState<number | null>(null);
+  const [descartarComentario, setDescartarComentario] = useState<string>('');
+  const [showDescartarInput, setShowDescartarInput] = useState<boolean>(false);
+  const [entrenarMsg, setEntrenarMsg] = useState<{
+    type: 'success' | 'danger';
+    text: string;
+  } | null>(null);
 
   const {
     data: historial,
@@ -90,6 +116,91 @@ export const HistorialVersionesPage: React.FC = () => {
         'Error al activar la versión del modelo.';
       setActivationError(msg);
       setTimeout(() => setActivationError(null), 6000);
+    },
+  });
+
+  const entrenarMutation = useMutation({
+    mutationFn: () => modelsApi.triggerReentrenamiento('reentrenamiento_manual'),
+    onSuccess: (data) => {
+      setEntrenarMsg({
+        type: 'success',
+        text:
+          data.mensaje ||
+          'Reentrenamiento iniciado. El resultado aparecerá en el historial de versiones.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['modelos-historial'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-modelos'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-cargas'] });
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.mensaje ||
+        'Error al solicitar el entrenamiento del nuevo modelo.';
+      setEntrenarMsg({
+        type: 'danger',
+        text: msg,
+      });
+    },
+  });
+
+  const {
+    data: comparacion,
+    isLoading: isComparacionLoading,
+    error: comparacionError,
+  } = useQuery({
+    queryKey: ['modelo-comparacion', comparingModeloId],
+    queryFn: () => modelsApi.getComparacionModelo(comparingModeloId!),
+    enabled: comparingModeloId !== null,
+  });
+
+  const publicarMutation = useMutation({
+    mutationFn: (id: number) => modelsApi.publicarModelo(id),
+    onSuccess: (data) => {
+      setActivationSuccess(data.mensaje || 'Modelo publicado exitosamente en producción.');
+      setActivationError(null);
+      setComparingModeloId(null);
+      setShowDescartarInput(false);
+      setDescartarComentario('');
+      queryClient.invalidateQueries({ queryKey: ['modelos-historial'] });
+      queryClient.invalidateQueries({ queryKey: ['modelo-activa'] });
+      queryClient.invalidateQueries({ queryKey: ['modelo-monitoreo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-resumen'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-modelos'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-cargas'] });
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.mensaje ||
+        'Error al publicar el modelo candidato.';
+      setActivationError(msg);
+      setActivationSuccess(null);
+    },
+  });
+
+  const descartarMutation = useMutation({
+    mutationFn: ({ id, comentario }: { id: number; comentario: string }) =>
+      modelsApi.descartarModelo(id, comentario),
+    onSuccess: (data) => {
+      setActivationSuccess(data.mensaje || 'Modelo descartado exitosamente.');
+      setActivationError(null);
+      setComparingModeloId(null);
+      setShowDescartarInput(false);
+      setDescartarComentario('');
+      queryClient.invalidateQueries({ queryKey: ['modelos-historial'] });
+      queryClient.invalidateQueries({ queryKey: ['modelo-activa'] });
+      queryClient.invalidateQueries({ queryKey: ['modelo-monitoreo'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-modelos'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones-cargas'] });
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.mensaje ||
+        'Error al descartar el modelo.';
+      setActivationError(msg);
+      setActivationSuccess(null);
     },
   });
 
@@ -212,6 +323,45 @@ export const HistorialVersionesPage: React.FC = () => {
 
     return map;
   }, [historial]);
+
+  const renderMetricDiff = (
+    diff: number | null | undefined,
+    unit: string = '%',
+    isCoverage: boolean = false
+  ) => {
+    if (diff === null || diff === undefined) {
+      return <span className="text-gray-400">—</span>;
+    }
+    if (diff === 0) {
+      return <span className="text-gray-500 font-semibold">0.00{unit}</span>;
+    }
+    if (isCoverage) {
+      const isBetter = diff > 0;
+      return (
+        <span
+          className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-bold text-xs ${
+            isBetter ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'
+          }`}
+        >
+          {isBetter ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+          {unit}
+        </span>
+      );
+    }
+    const isBetter = diff < 0;
+    return (
+      <span
+        className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-bold text-xs ${
+          isBetter ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'
+        }`}
+      >
+        {isBetter ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
+        {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+        {unit}
+      </span>
+    );
+  };
 
   const renderShapChart = (
     factores: FactorSHAPDivergente[],
@@ -344,15 +494,41 @@ export const HistorialVersionesPage: React.FC = () => {
         </NavLink>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-          Historial de versiones y explicabilidad (SHAP)
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Explore el historial de versiones del modelo XGBoost en producción y la contribución
-          de variables clave.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            Historial de versiones y explicabilidad (SHAP)
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Explore el historial de versiones del modelo XGBoost en producción y la contribución
+            de variables clave.
+          </p>
+        </div>
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => entrenarMutation.mutate()}
+            disabled={entrenarMutation.isPending}
+            className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 self-start sm:self-auto shrink-0"
+          >
+            {entrenarMutation.isPending ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Sparkles size={15} />
+            )}
+            <span>Entrenar nuevo modelo</span>
+          </button>
+        )}
       </div>
+
+      {entrenarMsg && (
+        <AlertBanner
+          type={entrenarMsg.type}
+          message={entrenarMsg.text}
+          onClose={() => setEntrenarMsg(null)}
+        />
+      )}
 
       {activationSuccess && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg text-sm flex items-center justify-between shadow-sm animate-fade-in">
@@ -452,10 +628,27 @@ export const HistorialVersionesPage: React.FC = () => {
                     </tr>
                   ) : historial && historial.length > 0 ? (
                     historial.map((v) => {
-                      const isActiva =
-                        v.estado.toUpperCase() === 'ACTIVA' || v.estado === 'Activa';
-                      const isDescartada =
-                        v.estado.toUpperCase() === 'DESCARTADA' || v.estado === 'Descartada';
+                      const estadoNorm = (v.estado || '').toUpperCase();
+                      let badgeColor = 'bg-gray-100 text-gray-700 border-gray-200';
+                      let badgeText = 'Anterior';
+
+                      if (estadoNorm === 'ACTIVA') {
+                        badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                        badgeText = 'Activa';
+                      } else if (estadoNorm === 'APTA') {
+                        badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                        badgeText = 'Apta - pendiente de publicación';
+                      } else if (estadoNorm === 'DESCARTADA') {
+                        badgeColor = 'bg-rose-100 text-rose-700 border-rose-200';
+                        badgeText = 'Descartada';
+                      } else if (estadoNorm === 'CANDIDATA') {
+                        badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                        badgeText = 'En evaluación';
+                      } else if (estadoNorm === 'ANTERIOR') {
+                        badgeColor = 'bg-gray-100 text-gray-700 border-gray-200';
+                        badgeText = 'Anterior';
+                      }
+
                       const degradacion = degradacionesMap.get(v.id_modelo);
                       const tieneDegradacion = !!degradacion;
 
@@ -476,16 +669,18 @@ export const HistorialVersionesPage: React.FC = () => {
                           </td>
                           <td className="py-4 px-4">
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                isActiva
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  : isDescartada
-                                  ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-                              }`}
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${badgeColor}`}
                             >
-                              {isActiva ? 'Activa' : isDescartada ? 'Descartada' : 'Anterior'}
+                              {badgeText}
                             </span>
+                            {v.observacion && (
+                              <span
+                                className="block text-[11px] text-gray-500 mt-1 max-w-[200px] truncate"
+                                title={v.observacion}
+                              >
+                                {v.observacion}
+                              </span>
+                            )}
                           </td>
                           <td className="py-4 px-4 font-bold tabular-nums text-gray-900">
                             <div>
@@ -517,25 +712,44 @@ export const HistorialVersionesPage: React.FC = () => {
                             {v.rmse !== null && v.rmse !== undefined ? v.rmse.toFixed(2) : '—'}
                           </td>
                           <td className="py-4 px-4 text-right">
-                            {isActiva ? (
+                            {estadoNorm === 'ACTIVA' ? (
                               <span className="text-xs text-emerald-600 font-semibold">
                                 En uso
                               </span>
-                            ) : isAdmin ? (
+                            ) : estadoNorm === 'APTA' || estadoNorm === 'DESCARTADA' ? (
                               <button
                                 type="button"
-                                onClick={() => activarMutation.mutate(v.id_modelo)}
-                                disabled={activarMutation.isPending}
-                                className="px-2.5 py-1 text-xs font-semibold text-brand-primary hover:text-brand-primary-hover hover:bg-emerald-50 rounded border border-brand-primary/30 transition-colors disabled:opacity-50 cursor-pointer"
+                                onClick={() => {
+                                  setComparingModeloId(v.id_modelo);
+                                  setShowDescartarInput(false);
+                                  setDescartarComentario('');
+                                }}
+                                className="px-2.5 py-1 text-xs font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100/80 rounded border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1.5"
                               >
-                                Activar
+                                <GitCompare size={13} />
+                                <span>Comparar</span>
                               </button>
+                            ) : estadoNorm === 'ANTERIOR' ? (
+                              isAdmin ? (
+                                <button
+                                  type="button"
+                                  onClick={() => activarMutation.mutate(v.id_modelo)}
+                                  disabled={activarMutation.isPending}
+                                  className="px-2.5 py-1 text-xs font-semibold text-brand-primary hover:text-brand-primary-hover hover:bg-emerald-50 rounded border border-brand-primary/30 transition-colors disabled:opacity-50 cursor-pointer"
+                                >
+                                  Activar
+                                </button>
+                              ) : (
+                                <span
+                                  className="text-xs text-gray-400 italic cursor-not-allowed"
+                                  title="Solo el Administrador puede activar versiones de modelo en producción"
+                                >
+                                  Solo admin
+                                </span>
+                              )
                             ) : (
-                              <span
-                                className="text-xs text-gray-400 italic cursor-not-allowed"
-                                title="Solo el Administrador puede activar versiones de modelo en producción"
-                              >
-                                Solo admin
+                              <span className="text-xs text-amber-600 font-medium">
+                                En evaluación
                               </span>
                             )}
                           </td>
@@ -673,6 +887,402 @@ export const HistorialVersionesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {comparingModeloId !== null && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-gray-100 space-y-6 my-8 max-h-[90vh] overflow-y-auto animate-scale-in">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+                  <GitCompare size={20} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">
+                    Comparación con el modelo en producción
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {comparacion
+                      ? `Candidato ${comparacion.version_candidato} vs Vigente ${comparacion.version_activa || 'No disponible'}`
+                      : 'Evaluación de métricas'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setComparingModeloId(null);
+                  setShowDescartarInput(false);
+                }}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {isComparacionLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-3">
+                <Loader2 size={32} className="animate-spin text-brand-700" />
+                <span className="text-xs font-medium">
+                  Cargando comparación de métricas con el modelo vigente...
+                </span>
+              </div>
+            ) : comparacionError || !comparacion ? (
+              <AlertBanner
+                type="danger"
+                message="No se pudo obtener la comparación del modelo seleccionado. Intente nuevamente."
+              />
+            ) : (
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                      comparacion.candidato.estado === 'APTA'
+                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                        : 'bg-rose-100 text-rose-700 border border-rose-200'
+                    }`}
+                  >
+                    Estado candidato: {comparacion.candidato.estado === 'APTA' ? 'Apta' : 'Descartada'}
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                      comparacion.cumple_umbral
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-rose-100 text-rose-700 border border-rose-200'
+                    }`}
+                  >
+                    {comparacion.cumple_umbral ? (
+                      <CheckCircle2 size={14} className="text-emerald-700" />
+                    ) : (
+                      <AlertTriangle size={14} className="text-rose-700" />
+                    )}
+                    {comparacion.cumple_umbral
+                      ? `Cumple umbral (≤ ${comparacion.umbral_mape}%)`
+                      : `Supera umbral (> ${comparacion.umbral_mape}%)`}
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                      comparacion.mejora_vigente
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    {comparacion.mejora_vigente ? (
+                      <TrendingDown size={14} className="text-emerald-700" />
+                    ) : (
+                      <AlertTriangle size={14} className="text-amber-700" />
+                    )}
+                    {comparacion.mejora_vigente
+                      ? 'Mejora precisión del modelo vigente'
+                      : 'No supera al modelo vigente'}
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto border border-gray-200/80 rounded-xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-50/90 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider">
+                        <th className="py-3 px-4">Métrica</th>
+                        <th className="py-3 px-4">Candidato ({comparacion.version_candidato})</th>
+                        <th className="py-3 px-4">Vigente ({comparacion.version_activa || 'Producción'})</th>
+                        <th className="py-3 px-4 text-right">Diferencia</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      <tr>
+                        <td className="py-3 px-4 font-bold text-gray-900">
+                          MAPE (demanda 14 días)
+                        </td>
+                        <td className="py-3 px-4 font-bold text-blue-700 tabular-nums">
+                          {comparacion.candidato.mape_14d !== null && comparacion.candidato.mape_14d !== undefined
+                            ? formatPct(comparacion.candidato.mape_14d, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-700 tabular-nums">
+                          {comparacion.activa?.mape_14d !== null && comparacion.activa?.mape_14d !== undefined
+                            ? formatPct(comparacion.activa.mape_14d, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          {renderMetricDiff(comparacion.diferencia.mape_14d, '%', false)}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-3 px-4 font-medium text-gray-800">
+                          MAPE diario (complementario)
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-gray-900 tabular-nums">
+                          {comparacion.candidato.mape !== null && comparacion.candidato.mape !== undefined
+                            ? formatPct(comparacion.candidato.mape, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-700 tabular-nums">
+                          {comparacion.activa?.mape !== null && comparacion.activa?.mape !== undefined
+                            ? formatPct(comparacion.activa.mape, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          {renderMetricDiff(comparacion.diferencia.mape, '%', false)}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-3 px-4 font-medium text-gray-800">MAE</td>
+                        <td className="py-3 px-4 font-semibold text-gray-900 tabular-nums">
+                          {comparacion.candidato.mae !== null && comparacion.candidato.mae !== undefined
+                            ? `${comparacion.candidato.mae.toFixed(2)} u.`
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-700 tabular-nums">
+                          {comparacion.activa?.mae !== null && comparacion.activa?.mae !== undefined
+                            ? `${comparacion.activa.mae.toFixed(2)} u.`
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          {renderMetricDiff(comparacion.diferencia.mae, ' u.', false)}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-3 px-4 font-medium text-gray-800">RMSE</td>
+                        <td className="py-3 px-4 font-semibold text-gray-900 tabular-nums">
+                          {comparacion.candidato.rmse !== null && comparacion.candidato.rmse !== undefined
+                            ? `${comparacion.candidato.rmse.toFixed(2)} u.`
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-700 tabular-nums">
+                          {comparacion.activa?.rmse !== null && comparacion.activa?.rmse !== undefined
+                            ? `${comparacion.activa.rmse.toFixed(2)} u.`
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          {renderMetricDiff(comparacion.diferencia.rmse, ' u.', false)}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-3 px-4 font-medium text-gray-800">WAPE</td>
+                        <td className="py-3 px-4 font-semibold text-gray-900 tabular-nums">
+                          {comparacion.candidato.wape !== null && comparacion.candidato.wape !== undefined
+                            ? formatPct(comparacion.candidato.wape, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-700 tabular-nums">
+                          {comparacion.activa?.wape !== null && comparacion.activa?.wape !== undefined
+                            ? formatPct(comparacion.activa.wape, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          {renderMetricDiff(comparacion.diferencia.wape, '%', false)}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-3 px-4 font-medium text-gray-800">Cobertura IC 95%</td>
+                        <td className="py-3 px-4 font-semibold text-gray-900 tabular-nums">
+                          {comparacion.candidato.cobertura_intervalo_95 !== null && comparacion.candidato.cobertura_intervalo_95 !== undefined
+                            ? formatPct(comparacion.candidato.cobertura_intervalo_95, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-gray-700 tabular-nums">
+                          {comparacion.activa?.cobertura_intervalo_95 !== null && comparacion.activa?.cobertura_intervalo_95 !== undefined
+                            ? formatPct(comparacion.activa.cobertura_intervalo_95, 2)
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          {renderMetricDiff(comparacion.diferencia.cobertura_intervalo_95, '%', true)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="bg-gray-50/60 p-4 rounded-xl border border-gray-200/70 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-900">
+                    <span>Evolución de MAPE (demanda 14 días) por corte</span>
+                    <span className="text-[11px] font-normal text-gray-500">
+                      Umbral de rechazo: {comparacion.umbral_mape}%
+                    </span>
+                  </div>
+
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={comparacion.cortes.map((c) => ({
+                          periodo: c.periodo,
+                          candidato:
+                            c.mape_14d_candidato !== null && c.mape_14d_candidato !== undefined
+                              ? Number(c.mape_14d_candidato.toFixed(2))
+                              : null,
+                          activa:
+                            c.mape_14d_activa !== null && c.mape_14d_activa !== undefined
+                              ? Number(c.mape_14d_activa.toFixed(2))
+                              : null,
+                        }))}
+                        margin={{ top: 10, right: 35, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="periodo"
+                          interval={0}
+                          padding={{ left: 16, right: 24 }}
+                          stroke="#94a3b8"
+                          fontSize={10}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e2e8f0' }}
+                          dy={5}
+                        />
+                        <YAxis
+                          stroke="#94a3b8"
+                          fontSize={10}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(val) => `${val}%`}
+                          domain={[0, Math.max(20, Math.ceil(comparacion.umbral_mape + 5))]}
+                        />
+                        <Tooltip
+                          formatter={(val: any) =>
+                            val !== null && val !== undefined ? `${Number(val).toFixed(2)}%` : '—'
+                          }
+                        />
+                        <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: '11px' }} />
+                        <ReferenceLine
+                          y={comparacion.umbral_mape}
+                          stroke="#ef4444"
+                          strokeDasharray="4 4"
+                          strokeWidth={1.5}
+                          label={{
+                            value: `${comparacion.umbral_mape}% Umbral máx`,
+                            position: 'right',
+                            fill: '#ef4444',
+                            fontSize: 10,
+                            fontWeight: 600,
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="candidato"
+                          name={`Candidato ${comparacion.version_candidato}`}
+                          stroke="#2563eb"
+                          strokeWidth={2.5}
+                          dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
+                          connectNulls={true}
+                          isAnimationActive={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="activa"
+                          name={`Vigente ${comparacion.version_activa || 'Producción'}`}
+                          stroke="#64748b"
+                          strokeWidth={2}
+                          strokeDasharray="3 3"
+                          dot={{ r: 3, fill: '#64748b', strokeWidth: 0 }}
+                          connectNulls={true}
+                          isAnimationActive={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {showDescartarInput && (
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+                    <label className="block text-xs font-semibold text-rose-900">
+                      Motivo del descarte (obligatorio)
+                    </label>
+                    <input
+                      type="text"
+                      value={descartarComentario}
+                      onChange={(e) => setDescartarComentario(e.target.value)}
+                      placeholder="Ingrese la justificación técnica del descarte..."
+                      className="w-full px-3 py-2 bg-white border border-rose-300 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowDescartarInput(false)}
+                        className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!descartarComentario.trim() || descartarMutation.isPending}
+                        onClick={() => {
+                          if (descartarComentario.trim()) {
+                            descartarMutation.mutate({
+                              id: comparacion.id_candidato,
+                              comentario: descartarComentario.trim(),
+                            });
+                          }
+                        }}
+                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {descartarMutation.isPending && (
+                          <Loader2 size={13} className="animate-spin" />
+                        )}
+                        <span>Confirmar Descarte</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    {isAdmin && comparacion.candidato.estado === 'APTA' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `¿Está seguro de publicar la versión ${comparacion.version_candidato} en producción?\n\nEsta versión reemplazará al modelo activo y recalculará automáticamente los pronósticos en el sistema.`
+                              )
+                            ) {
+                              publicarMutation.mutate(comparacion.id_candidato);
+                            }
+                          }}
+                          disabled={publicarMutation.isPending}
+                          className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                          {publicarMutation.isPending ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <CheckCircle2 size={14} />
+                          )}
+                          <span>Publicar en producción</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowDescartarInput((prev) => !prev)}
+                          disabled={descartarMutation.isPending}
+                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          Descartar
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComparingModeloId(null);
+                      setShowDescartarInput(false);
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
